@@ -341,6 +341,9 @@ public:
         return Spectrum(0.0f);
     }
 
+	virtual void transform(const Intersection &its, const Float &theta, const Matrix3x3 &rotate, Matrix3x3 &mInv, Float &amplitude) const {
+		NotImplementedError("transform");
+	}
     /**
      * \brief Sample the BSDF and return the importance weight (i.e. the
      * value of the BSDF divided by the probability density of the sample).
@@ -416,7 +419,7 @@ public:
      */
     virtual Spectrum eval(const BSDFSamplingRecord &bRec,
         EMeasure measure = ESolidAngle) const = 0;
-
+	
     /**
      * \brief Compute the probability of sampling \c bRec.wo (given
      * \c bRec.wi).

@@ -832,7 +832,7 @@ Spectrum Scene::sampleEmitterDirect(DirectSamplingRecord &dRec,
     /* Randomly pick an emitter */
     Float emPdf;
     size_t index = m_emitterPDF.sampleReuse(sample.x, emPdf);
-    const Emitter *emitter = m_emitters[index].get();
+	const Emitter *emitter = m_emitters[index].get();
     Spectrum value = emitter->sampleDirect(dRec, sample);
 
     if (dRec.pdf != 0) {

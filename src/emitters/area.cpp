@@ -108,6 +108,10 @@ public:
             return m_radiance;
     }
 
+	Spectrum getRadiance() const {
+		return m_radiance;
+	}
+
     Float pdfPosition(const PositionSamplingRecord &pRec) const {
         return m_shape->pdfPosition(pRec);
     }

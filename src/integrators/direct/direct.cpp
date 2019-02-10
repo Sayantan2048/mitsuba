@@ -240,6 +240,7 @@ public:
 
                         Li += value * bsdfVal * weight;
                     }
+                    
                 }
             }
         }

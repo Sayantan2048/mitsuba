@@ -310,8 +310,7 @@ public:
         /* Evaluate the roughness texture */
         Float alpha = m_alpha->eval(its).average();
         Float Ftr = m_externalRoughTransmittance->evalDiffuse(alpha);
-
-        return m_diffuseReflectance->eval(its) * Ftr;
+		return m_diffuseReflectance->eval(its) * Ftr;
     }
 
     Spectrum getSpecularReflectance(const Intersection &its) const {

@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!-- MI test scene from Eric Veach's thesis - modeled
+     after a file by Steve Marschner (CS667)
+-->
+<scene version="0.6.0">
+	<integrator type="ltc">
+		<integrator type="analyticDiffuse"/>
+	</integrator>
+
+	<!--
+	<shape type="sphere">
+		<point name="center" x="3.75" y="0" z="0"/>
+		<float name="radius" value=".9"/>
+
+		<emitter type="area">
+			<rgb name="radiance" value="1.23457 1.23457 1.23457"/>
+		</emitter>
+
+		<bsdf type="diffuse">
+			<rgb name="reflectance" value="0,0,0"/>
+		</bsdf>
+	</shape>
+	-->
+
+	
+	<shape type="obj">
+		<string name="filename" value="luminaire.obj"/>
+		<transform name="toWorld">
+			<rotate  x="1.0" y="0" z="0" angle="65"/>
+			<translate x="3.75" y="-2" z="0"/>
+		</transform>
+
+		<emitter type="area">
+			<rgb name="radiance" value="1.419 1.607 2"/>
+		</emitter>
+
+		<bsdf type="diffuse">
+			<rgb name="reflectance" value="0 0 0"/>
+		</bsdf>
+	</shape>
+	
+	<shape type="obj">
+		<string name="filename" value="luminaire.obj"/>
+		<transform name="toWorld">
+			<rotate  x="1.0" y="0" z="0" angle="65"/>
+			<translate x="0.0" y="-2" z="0"/>
+		</transform>
+
+		<emitter type="area">
+			<rgb name="radiance" value="1.803 1.843 2"/>
+		</emitter>
+
+		<bsdf type="diffuse">
+			<rgb name="reflectance" value="0 0 0"/>
+		</bsdf>
+	</shape>
+
+	<shape type="obj">
+		<string name="filename" value="luminaire.obj"/>
+		<transform name="toWorld">
+			<rotate  x="1.0" y="0" z="0" angle="65"/>
+			<translate x="-3.75" y="-2" z="0"/>
+		</transform>
+
+		<emitter type="area">
+			<rgb name="radiance" value="2 0.847 0.296"/>
+		</emitter>
+
+		<bsdf type="diffuse">
+			<rgb name="reflectance" value="0 0 0"/>
+		</bsdf>
+	</shape>
+
+	<shape type="obj">
+		<string name="filename" value="plate1.obj"/>
+
+		<bsdf type="approxmicrofacet">
+			<string name="distribution" value="ggx"/>
+			<rgb name="diffuseReflectance" value="0.07 0.09 0.13"/>
+			<spectrum name="specularReflectance" value="1.0"/>
+			<float name="alpha" value="0.005"/>
+		</bsdf>
+	</shape>
+
+	
+	<shape type="obj">
+		<string name="filename" value="plate2.obj"/>
+
+		<bsdf type="approxmicrofacet">
+			<string name="distribution" value="ggx"/>
+			<rgb name="diffuseReflectance" value="0.07 0.09 0.13"/>
+			<spectrum name="specularReflectance" value="1"/>
+			<float name="alpha" value="0.02"/>
+		</bsdf>
+	</shape>
+
+	<shape type="obj">
+		<string name="filename" value="plate3.obj"/>
+
+		<bsdf type="approxmicrofacet">
+			<string name="distribution" value="ggx"/>
+			<rgb name="diffuseReflectance" value="0.07 0.09 0.13"/>
+			<spectrum name="specularReflectance" value="1"/>
+			<float name="alpha" value="0.05"/>
+		</bsdf>
+	</shape>
+	
+	<shape type="obj">
+		<string name="filename" value="plate4.obj"/>
+
+		<bsdf type="approxmicrofacet">
+			<string name="distribution" value="ggx"/>
+			<rgb name="diffuseReflectance" value="0.07 0.09 0.13"/>
+			<spectrum name="specularReflectance" value="1"/>
+			<float name="alpha" value="0.1"/>
+		</bsdf>
+	</shape>
+	
+	<shape type="obj">
+		<string name="filename" value="floor.obj"/>
+
+		<bsdf type="approxmicrofacet">
+			<string name="distribution" value="ggx"/>
+			<rgb name="diffuseReflectance" value="0.4 0.4 0.4"/>
+			<spectrum name="specularReflectance" value="0.0"/>
+			<float name="alpha" value="1"/>
+		</bsdf>
+	</shape>
+	
+	<sensor type="perspective">
+		<string name="fovAxis" value="smaller"/>
+		<transform name="toWorld">
+			<scale x="-1"/>
+			<scale x="-1"/>
+			<lookAt origin="0, 2, 15" target="0, -2, 2.5" up="0, 1, 0"/>
+		</transform>
+		<float name="fov" value="28"/>
+
+		<sampler type="ldsampler">
+			<integer name="sampleCount" value="16"/>
+			<integer name="dimension" value="1"/>
+		</sampler>
+
+		<film type="hdrfilm">
+			<integer name="width" value="768"/>
+			<integer name="height" value="512"/>
+			<boolean name="banner" value="true"/>
+
+			<rfilter type="gaussian"/>
+		</film>
+	</sensor>
+</scene>
