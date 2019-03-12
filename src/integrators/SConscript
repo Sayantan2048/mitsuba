@@ -23,6 +23,8 @@ plugins += env.SharedLibrary('motion', ['misc/motion.cpp'])
 # Custom
 plugins += env.SharedLibrary('ltc', ['custom/ltc.cpp'])
 plugins += env.SharedLibrary('analyticDiffuse', ['custom/analyticDiffuse.cpp'])
+plugins += env.SharedLibrary('directCv', ['custom/directCv.cpp'])
+plugins += env.SharedLibrary('directRatio', ['custom/directRatio.cpp'])
 
 # Bidirectional techniques
 bidirEnv = env.Clone()

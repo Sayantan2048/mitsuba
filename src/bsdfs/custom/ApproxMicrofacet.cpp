@@ -114,10 +114,16 @@ public:
     }
 
     Spectrum eval(const BSDFSamplingRecord &bRec, EMeasure measure) const {
-        return Spectrum(0.0);
+        return m_subBSDF->eval(bRec, measure);
     }
     
-    void transform(const Intersection &its, const Float &theta, const Matrix3x3 &rotate, Matrix3x3 &mInv, Float &amplitude) const {
+    void transform(const Intersection &its, const Float &theta, Matrix3x3 &mInv, Float &amplitude) const {
+        if (theta < 0) {
+            mInv.setZero();
+            amplitude = 0;
+            return;
+        }
+        
         Float alpha = m_alpha->eval(its).average();
         Float blendeAlpha, blendeTheta;
         Vector4i lerp;
@@ -129,64 +135,35 @@ public:
     }
 
     Float pdf(const BSDFSamplingRecord &bRec, EMeasure measure) const {
-        /*if (!(bRec.typeMask & EDiffuseReflection) || measure != ESolidAngle
-            || Frame::cosTheta(bRec.wi) <= 0
-            || Frame::cosTheta(bRec.wo) <= 0)
-            return 0.0f;
-
-        return warp::squareToCosineHemispherePdf(bRec.wo);*/
-        return 0.0f;
+        return m_subBSDF->pdf(bRec, measure);
     }
 
     Spectrum sample(BSDFSamplingRecord &bRec, const Point2 &sample) const {
-        /*if (!(bRec.typeMask & EDiffuseReflection) || Frame::cosTheta(bRec.wi) <= 0)
-            return Spectrum(0.0f);
-
-        bRec.wo = warp::squareToCosineHemisphere(sample);
-        bRec.eta = 1.0f;
-        bRec.sampledComponent = 0;
-        bRec.sampledType = EDiffuseReflection;
-        return m_reflectance->eval(bRec.its);*/
-        return Spectrum(0.0f);
+       return m_subBSDF->sample(bRec, sample);
     }
 
     Spectrum sample(BSDFSamplingRecord &bRec, Float &pdf, const Point2 &sample) const {
-        /*if (!(bRec.typeMask & EDiffuseReflection) || Frame::cosTheta(bRec.wi) <= 0)
-            return Spectrum(0.0f);
-
-        bRec.wo = warp::squareToCosineHemisphere(sample);
-        bRec.eta = 1.0f;
-        bRec.sampledComponent = 0;
-        bRec.sampledType = EDiffuseReflection;
-        pdf = warp::squareToCosineHemispherePdf(bRec.wo);
-        return m_reflectance->eval(bRec.its);*/
-        return Spectrum(0.0f);
+        return m_subBSDF->sample(bRec, pdf, sample);
     }
 
     // This is required for putting another brdf inside this one.
-    // May come handy later on when I test with LTC with CV
     void addChild(const std::string &name, ConfigurableObject *child) {
-        /*
-        Log(EInfo, "%f", m_alpha);
-        if (child->getClass()->derivesFrom(MTS_CLASS(Texture))) {
-            if (name == "specularReflectance")
-                m_specularReflectance = static_cast<Texture *>(child);
-            else if (name == "diffuseReflectance")
-                m_diffuseReflectance = static_cast<Texture *>(child);
-            else
-                BSDF::addChild(name, child);
-        } else if (name == "alpha")
-            Log(EInfo, "I don't know what to do yet");
-            //m_alpha = static_cast<Float>(child);
-        else
-            BSDF::addChild(name, child); */
+        const Class *cClass = child->getClass();
+        
+        if (cClass->derivesFrom(MTS_CLASS(BSDF))) {
+            m_subBSDF = static_cast<BSDF *>(child);
+        } else {
+            BSDF::addChild(name, child);
+        }
     }
 
     Float getRoughness(const Intersection &its, int component) const {
-         Assert(component == 0 || component == 1);
+        Assert(component == 0 || component == 1);
 
         if (component == 0)
             return m_alpha->eval(its).average();
+        else if (component == 1)
+            return m_subBSDF->getRoughness(its, 0);
         else
             return std::numeric_limits<Float>::infinity();
     }
@@ -208,6 +185,8 @@ private:
     ref<Texture> m_specularReflectance;
     ref<Texture> m_alpha;
     EType m_type;
+
+    ref<BSDF> m_subBSDF;
 
     const float (*ltcDataMat)[9];
     const float (*ltcDataMatInv)[9];

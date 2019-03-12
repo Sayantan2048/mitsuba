@@ -341,7 +341,7 @@ public:
         return Spectrum(0.0f);
     }
 
-	virtual void transform(const Intersection &its, const Float &theta, const Matrix3x3 &rotate, Matrix3x3 &mInv, Float &amplitude) const {
+	virtual void transform(const Intersection &its, const Float &theta, Matrix3x3 &mInv, Float &amplitude) const {
 		NotImplementedError("transform");
 	}
     /**

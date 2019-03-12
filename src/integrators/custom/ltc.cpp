@@ -20,9 +20,9 @@
 #include "analytic.h"
 MTS_NAMESPACE_BEGIN
 
-/* This is a direct illumination with approximate specular + exact diffuse component renderer. Also does not cast any shadows.
+/* This is a direct illumination with approximate specular + exact diffuse renderer. Also does not cast any shadows.
  * Also when comparing with regular microfacet distributions, one should disable the fresnel term or set it to 1. Otherwise there
- * may be issues with the intensity. The highlights seem very close with or without disabling fresnel term.
+ * may be issues with the intensity. However the specular highlights seem very close with or without disabling fresnel term.
  */
 
 class LtcIntegrator : public SamplingIntegrator {
@@ -104,7 +104,7 @@ public:
 
         Matrix3x3 rotMat;
         Float cosThetaIncident;
-        getRotMat(its, -ray.d, cosThetaIncident, rotMat);
+        Analytic::getRotMat(its, -ray.d, cosThetaIncident, rotMat);
        
         if (cosThetaIncident < 0)
             return Spectrum(0.0f);
@@ -117,7 +117,7 @@ public:
         Spectrum diffuseLi = m_subIntegrator->Li(ray, rRec);
 
         try {
-            bsdf->transform(its, thetaIncident, rotMat, mInv, amplitude);
+            bsdf->transform(its, thetaIncident, mInv, amplitude);
         }
         catch(...) {
             Log(EInfo, "Caught except");
@@ -125,7 +125,7 @@ public:
         }
        
         Spectrum sum(0.0f);
-        
+        Matrix3x3 mInv_rot = mInv * rotMat;
         for (auto emitter : scene->getEmitters()) {
             if (emitter->isOnSurface() && 
                 emitter->getShape() != NULL && 
@@ -136,23 +136,35 @@ public:
                 const Point *vertexPositions = triMesh->getVertexPositions();
         
                 for (size_t i = 0; i < triMesh->getTriangleCount(); i++) {
+                    Float result;
+
+                    if (true) {
                     // Vector between shade point to the vertices on the light source
                     // in specially designed local coordinate of shade point.
-                    Vector e0 = (rotMat * (vertexPositions[triangles[i].idx[2]] - its.p));
-                    Vector e1 = (rotMat * (vertexPositions[triangles[i].idx[1]] - its.p));
-                    Vector e2 = (rotMat * (vertexPositions[triangles[i].idx[0]] - its.p));
+                        Vector e0 = (rotMat * (vertexPositions[triangles[i].idx[2]] - its.p));
+                        Vector e1 = (rotMat * (vertexPositions[triangles[i].idx[1]] - its.p));
+                        Vector e2 = (rotMat * (vertexPositions[triangles[i].idx[0]] - its.p));
 
-                    //Log(EInfo, "%f", dot(normalize(e0), normalize(mInv*e0)));
+                        //Log(EInfo, "%f", dot(normalize(e0), normalize(mInv*e0)));
 
-                    // transform to bsdf space. Note that uniform scaling of mInv does not affect the integration result.
-                    // Also clipping of polygons shouldn't be affected by uniform scaling as points above horizon always stays above horizon, no matter how far or close 
-                    // they are from the shade point. In other words, solid angle formed by the polygon on hemisphere does not change with uniform scaling, hence result
-                    // stays same.
-                    e0 = mInv * e0;
-                    e1 = mInv * e1;
-                    e2 = mInv * e2;
-                    
-                    Float result = Analytic::integrate(e0, e1, e2);
+                        // transform to bsdf space. Note that uniform scaling of mInv does not affect the integration result.
+                        // Also clipping of polygons shouldn't be affected by uniform scaling as points above horizon always stays above horizon, no matter how far or close 
+                        // they are from the shade point. In other words, solid angle formed by the polygon on hemisphere does not change with uniform scaling, hence result
+                        // stays same.
+                        e0 = mInv * e0;
+                        e1 = mInv * e1;
+                        e2 = mInv * e2;
+
+                        result = Analytic::integrate(e0, e1, e2);
+                    }
+                    // same as other branch but more optimized and less readable.
+                    else {
+                        Vector e0 = (mInv_rot * (vertexPositions[triangles[i].idx[2]] - its.p));
+                        Vector e1 = (mInv_rot * (vertexPositions[triangles[i].idx[1]] - its.p));
+                        Vector e2 = (mInv_rot * (vertexPositions[triangles[i].idx[0]] - its.p));
+
+                        result = Analytic::integrate(e0, e1, e2);
+                    }
 
                     // Note that each triangle is considered a light source, hence we apply single sided or double sided processing here.
                     if (true) // One sided light source
@@ -178,32 +190,6 @@ public:
 private:
     ref<SamplingIntegrator> m_subIntegrator;
     bool m_hideEmitters;
-
-    // wi is expected to be unit length, , both in world coordinates
-    void getRotMat(const Intersection &its, const Vector &wi, Float &cosThetaIncident, Matrix3x3 &rotMat) const {
-        // First we need a coordinate system in which wi has phi = 0(wrt new X axis) and normal is (0, 0, 1)
-        
-        cosThetaIncident = dot(its.shFrame.n, wi);
-        if (cosThetaIncident < 0) {
-            rotMat.setZero();
-            return;
-        }
-
-        // what happens when wi == shFrame.n?
-        // well in that case, the required specifications for wi are already met and we can use whatever local basis we have. 
-        else if (cosThetaIncident > 1 - 1e-10) {
-            Matrix3x3 m(its.shFrame.s, its.shFrame.t, its.shFrame.n);
-            m.transpose(rotMat);
-            return;
-        }
-
-        Vector newX = normalize(wi - its.shFrame.n * cosThetaIncident); // row 0
-        Vector newY = cross(its.shFrame.n, newX); // row 1
-        //rotMat = Matrix3x3(newX, newY, its.shFrame.n);
-        Matrix3x3 m(newX, newY, its.shFrame.n); // insert as columns
-        m.transpose(rotMat); // make them rows
-        //Log(EInfo, "%f and %f", rotMat.row(0).y, m.col(0).y);
-    }
 };
 
 MTS_IMPLEMENT_CLASS_S(LtcIntegrator, false, SamplingIntegrator)
