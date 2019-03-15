@@ -1,10 +1,13 @@
 #pragma once
 #if !defined(__MITSUBA_PLUGIN_ANALYTIC_H_)
 #define __MITSUBA_PLUGIN_ANALYTIC_H_
+#include <mitsuba/mitsuba.h>
+
 MTS_NAMESPACE_BEGIN
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
-class Analytic {
+
+class Analytic : public Object {
 public:
     // Assuming shading point at (0,0,0) with shading normal (0,0,1), and v1, v2 projected on the norm-ball.
     static Float integrateEdge(const Vector &v1, const Vector &v2) {
@@ -117,6 +120,64 @@ public:
         return (specular * MAX(0, w_.z / length) * jacobian * amplitude + diffuse * Frame::cosTheta(bRec.wo)) * INV_PI;
     }
 
+    static Spectrum sample(BSDFSamplingRecord &bRec, Float &_pdf, const Point2 &_sample, const Matrix3x3 &m, const Matrix3x3 &mInv, const Float mInvDet, const Float &amplitude, const Spectrum &specular, const Spectrum diffuse) {
+        if (Frame::cosTheta(bRec.wi) <= 0)
+            return Spectrum(0.0f);
+
+        Point2 sample(_sample);
+        Float dAvg = diffuse.getLuminance(),
+              sAvg = specular.getLuminance();
+        
+        Float probSpecular = sAvg / (sAvg + dAvg);
+        
+        bool choseSpecular = true;
+
+        if (sample.y < probSpecular) {
+                sample.y /= probSpecular;
+        } else {
+            sample.y = (sample.y - probSpecular) / (1 - probSpecular);
+            choseSpecular = false;
+        }
+        
+        bRec.wo = warp::squareToCosineHemisphere(sample);
+        Vector wo_ = bRec.wo;
+        Float pdfSpecular = 0, pdfDiffuse = 0;
+        if (choseSpecular) {
+            bRec.wo = m * bRec.wo; 
+
+            Float length = bRec.wo.length();
+            bRec.wo /= length;
+        }
+        
+        if (Frame::cosTheta(bRec.wo) <= 0) {
+           _pdf = 0;
+           return Spectrum(0.0f);
+        }
+
+        // compute pdfSpecular == D(w) * probSpecular
+        Vector w_;
+        Float length;
+        if (choseSpecular) {
+            w_ = wo_;
+            length = 1;
+        }
+        else {
+            w_ = mInv * bRec.wo;
+            length = w_.length();
+        }
+        Float jacobian = mInvDet / (length * length * length);
+
+        Float D = MAX(0, w_.z / length) * jacobian * amplitude * INV_PI;
+        pdfSpecular =  D * probSpecular;
+
+        // compute pdfDiffuse
+        pdfDiffuse = (1.0f - probSpecular) * warp::squareToCosineHemispherePdf(bRec.wo);
+        
+        _pdf = pdfDiffuse + pdfSpecular;
+        
+        // return bsdf(wo) * cos(wo) / pdf(wo);
+        return _pdf == 0 ? Spectrum(0.0f) : (specular * D + diffuse * Frame::cosTheta(bRec.wo) * INV_PI) / _pdf;
+    }
 };
 MTS_NAMESPACE_END
 #endif
