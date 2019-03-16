@@ -5,9 +5,9 @@
 -->
 <scene version="0.6.0">
 	<integrator type="directCv">
-		<integer name="emitterSamples" value="160"/>
-		<integer name="brdfSamples" value="160"/>
-		<integer name="approxBrdfSamples" value="0"/>
+		<integer name="emitterSamples" value="$es"/>
+		<integer name="brdfSamples" value="$bs"/>
+		<integer name="approxBrdfSamples" value="$abs"/>
 		<integrator type="ltc">
 			<integrator type="analyticDiffuse"/>
 		</integrator>
