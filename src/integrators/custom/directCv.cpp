@@ -334,7 +334,7 @@ class DirectCvIntegrator : public SamplingIntegrator {
     }
 
     inline Float miWeight(Float pdfA, Float pdfB) const {
-        pdfA *= pdfA; pdfB *= pdfB;
+        //pdfA *= pdfA; pdfB *= pdfB;
         return pdfA / (pdfA + pdfB);
     }
     
