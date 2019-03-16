@@ -121,6 +121,7 @@ public:
     }
 
     static Spectrum sample(BSDFSamplingRecord &bRec, Float &_pdf, const Point2 &_sample, const Matrix3x3 &m, const Matrix3x3 &mInv, const Float mInvDet, const Float &amplitude, const Spectrum &specular, const Spectrum diffuse) {
+        _pdf = 0;
         if (Frame::cosTheta(bRec.wi) <= 0)
             return Spectrum(0.0f);
 
@@ -150,7 +151,6 @@ public:
         }
         
         if (Frame::cosTheta(bRec.wo) <= 0) {
-           _pdf = 0;
            return Spectrum(0.0f);
         }
 
