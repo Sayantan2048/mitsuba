@@ -276,7 +276,7 @@ class DirectCvIntegrator : public SamplingIntegrator {
 
                 const Spectrum brdfVal = brdf->eval(bRec) / approxBrdfPdf;
              
-                Li = valueUnhindered * (brdfVal - brdfValApprox) / (Float) m_approxBrdfSamples;
+                Li += valueUnhindered * (brdfVal - brdfValApprox) / (Float) m_approxBrdfSamples;
             }
         }
        
