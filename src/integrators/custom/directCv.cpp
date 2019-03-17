@@ -178,7 +178,7 @@ class DirectCvIntegrator : public SamplingIntegrator {
                                 brdfPdf *  m_fracBRDF) * m_weightEmitter;
 
                         //Log(EInfo, "Weight %f", weight);
-                        Li += valueUnhindered * ( brdfValApprox ) * weight;
+                        Li += valueUnhindered * ( brdfVal - brdfValApprox ) * weight;
                     }
                 }
             }
@@ -232,7 +232,7 @@ class DirectCvIntegrator : public SamplingIntegrator {
                 const Float weight = miWeight(brdfPdf * m_fracBRDF,
                     emitterPdf * m_fracEmitter) * m_weightBRDF;
 
-                Li += valueUnhindered * (brdfValApprox) * weight;
+                Li += valueUnhindered * (brdfVal - brdfValApprox) * weight;
             }
         }
 
@@ -274,13 +274,13 @@ class DirectCvIntegrator : public SamplingIntegrator {
                 //if (notInShadow < 1)
                 valueUnhindered = intersectEmitter(scene, shadowRay, dRec);
 
-                //const Spectrum brdfValApprox = Analytic::approxBrdfEval(bRec, mInv, mInvDet, amplitude, specularReflectance, diffuseReflectance) / approxBrdfPdf;
+                const Spectrum brdfVal = brdf->eval(bRec) / approxBrdfPdf;
              
-                Li += valueUnhindered * (brdfValApprox) / (Float) m_approxBrdfSamples;
+                Li = valueUnhindered * (brdfVal - brdfValApprox) / (Float) m_approxBrdfSamples;
             }
         }
        
-        Li -= m_subIntegrator->Li(ray, rRec);
+        //Li -= m_subIntegrator->Li(ray, rRec);
         Li = Li.abs();
         //Li.clampNegative();
         return Li;

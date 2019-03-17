@@ -141,13 +141,19 @@ public:
         }
         
         bRec.wo = warp::squareToCosineHemisphere(sample);
-        Vector wo_ = bRec.wo;
+        bRec.wo /= bRec.wo.length();
+
+        bRec.sampledComponent = 1;
+        bRec.sampledType = BSDF::EDiffuseReflection;
+
         Float pdfSpecular = 0, pdfDiffuse = 0;
         if (choseSpecular) {
             bRec.wo = m * bRec.wo; 
 
-            Float length = bRec.wo.length();
-            bRec.wo /= length;
+            bRec.wo /= bRec.wo.length();
+
+            bRec.sampledComponent = 0;
+            bRec.sampledType = BSDF::EGlossyReflection;
         }
         
         if (Frame::cosTheta(bRec.wo) <= 0) {
@@ -155,18 +161,9 @@ public:
         }
 
         // compute pdfSpecular == D(w) * probSpecular
-        Vector w_;
-        Float length;
-        if (choseSpecular) {
-            w_ = wo_;
-            length = 1;
-        }
-        else {
-            w_ = mInv * bRec.wo;
-            length = w_.length();
-        }
+        Vector w_ = mInv * bRec.wo;
+        Float length = w_.length();
         Float jacobian = mInvDet / (length * length * length);
-
         Float D = MAX(0, w_.z / length) * jacobian * amplitude * INV_PI;
         pdfSpecular =  D * probSpecular;
 
