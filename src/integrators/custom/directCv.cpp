@@ -9,12 +9,15 @@ class DirectCvIntegrator : public SamplingIntegrator {
         m_emitterSamples = props.getSize("emitterSamples", 1);
         m_brdfSamples = props.getSize("brdfSamples", 1);
         m_approxBrdfSamples = props.getSize("approxBrdfSamples", 0);
+        m_uniformSamples = props.getSize("uniformSamples", 0);
+        m_cosineSamples = props.getSize("cosineSamples", 0);
         m_hideEmitters = props.getBoolean("hideEmitters", false);
+        pick = props.getSize("pick", 0) > 0;
        
         //m_brdfSamples = 0;
-        Assert(m_emitterSamples + m_brdfSamples + m_approxBrdfSamples > 0);
+        Assert(m_emitterSamples + m_brdfSamples + m_approxBrdfSamples + m_uniformSamples + m_cosineSamples > 0);
         // Either do MIS or approxBrdfSamples
-        Assert((m_emitterSamples + m_brdfSamples) * m_approxBrdfSamples == 0);
+        Assert((m_emitterSamples + m_brdfSamples) * m_approxBrdfSamples * m_uniformSamples * m_cosineSamples == 0);
     }
 
     /// Unserialize from a binary data stream
@@ -75,6 +78,10 @@ class DirectCvIntegrator : public SamplingIntegrator {
             sampler->request2DArray(m_brdfSamples);
         if (m_approxBrdfSamples > 1)
             sampler->request2DArray(m_approxBrdfSamples);
+        if (m_uniformSamples > 1)
+            sampler->request2DArray(m_uniformSamples);
+        if (m_cosineSamples > 1)
+            sampler->request2DArray(m_cosineSamples);
     }
 
     void addChild(const std::string &name, ConfigurableObject *child) {
@@ -176,7 +183,7 @@ class DirectCvIntegrator : public SamplingIntegrator {
                                 brdfPdf *  m_fracBRDF) * m_weightEmitter;
 
                         //Log(EInfo, "Weight %f", weight);
-                        Li += valueUnhindered * (brdfVal * notInShadow - brdfValApprox) * weight;
+                        Li += valueUnhindered * (brdfValApprox * notInShadow - brdfValApprox) * weight;
                     }
                 }
             }
@@ -229,7 +236,7 @@ class DirectCvIntegrator : public SamplingIntegrator {
                 const Float weight = miWeight(brdfPdf * m_fracBRDF,
                     emitterPdf * m_fracEmitter) * m_weightBRDF;
 
-                Li += valueUnhindered * (brdfVal * notInShadow - brdfValApprox) * weight;
+                Li += valueUnhindered * ( brdfValApprox * notInShadow - brdfValApprox) * weight;
             }
         }
 
@@ -276,11 +283,114 @@ class DirectCvIntegrator : public SamplingIntegrator {
 
                 const Spectrum brdfVal = brdf->eval(bRec) / approxBrdfPdf;
              
-                Li += valueUnhindered * (brdfValApprox) / (Float) m_approxBrdfSamples;
+                Li += valueUnhindered * (brdfValApprox * notInShadow - brdfValApprox) / (Float) m_approxBrdfSamples;
             }
         }
-       
-        Li -= m_subIntegrator->Li(ray, rRec);
+
+        
+        if (m_uniformSamples > 1) {
+            sampleArray = rRec.sampler->next2DArray(m_uniformSamples);
+        } else {
+            sample = rRec.nextSample2D(); sampleArray = &sample;
+        }
+
+        for (size_t i=0; i < m_uniformSamples; ++i) {
+           
+            Float uniformPdf;
+            BSDFSamplingRecord bRec(its, rRec.sampler, ERadiance);
+            bRec.wo = warp::squareToUniformHemisphere(sampleArray[i]);
+            uniformPdf = warp::squareToUniformHemispherePdf();
+
+            if (uniformPdf > 0) {
+                const Vector wo = its.toWorld(bRec.wo);
+
+                // Trace a ray in this direction
+                Ray shadowRay(its.p, wo, ray.time);
+                Float notInShadow = 0;
+                Spectrum valueUnhindered(0.0f);
+                if (scene->rayIntersect(shadowRay, hitLoc) && hitLoc.isEmitter()) {
+                    const Emitter *tempEmitter = hitLoc.shape->getEmitter();
+                    
+                    if (tempEmitter != NULL &&
+                        tempEmitter->isOnSurface() && // The next three condition essentially checks if the emitter is a mesh light.
+                        tempEmitter->getShape() != NULL && 
+                        typeid(*(tempEmitter->getShape())) == typeid(TriMesh)) {
+                            // If the shadowRay hits a light source
+                            notInShadow = 1;
+                            valueUnhindered = hitLoc.Le(-shadowRay.d);
+                        }
+                }
+                // In case the shadow ray didn't hit a light source.
+                if (notInShadow < 1)
+                    valueUnhindered = intersectEmitter(scene, shadowRay, dRec);
+
+                if (valueUnhindered.isZero())
+                    continue;
+
+                const Spectrum brdfVal = brdf->eval(bRec) / uniformPdf;
+                const Spectrum brdfValApprox = Analytic::approxBrdfEval(bRec, mInv, mInvDet, amplitude, specularReflectance, diffuseReflectance) / uniformPdf;
+
+                if (pick)
+                    Li += valueUnhindered * (brdfVal - brdfValApprox) / (Float) m_uniformSamples;
+                else
+                    Li += valueUnhindered * (brdfValApprox) / (Float) m_uniformSamples;
+            }
+        }
+
+        if (m_cosineSamples > 1) {
+            sampleArray = rRec.sampler->next2DArray(m_cosineSamples);
+        } else {
+            sample = rRec.nextSample2D(); sampleArray = &sample;
+        }
+
+        for (size_t i=0; i < m_cosineSamples; ++i) {
+           
+            Float cosinePdf;
+            BSDFSamplingRecord bRec(its, rRec.sampler, ERadiance);
+            bRec.wo = warp::squareToCosineHemisphere(sampleArray[i]);
+            cosinePdf = bRec.wo.length();
+            bRec.wo /= cosinePdf;
+            cosinePdf *= INV_PI;
+
+            if (cosinePdf > 0) {
+                const Vector wo = its.toWorld(bRec.wo);
+
+                // Trace a ray in this direction
+                Ray shadowRay(its.p, wo, ray.time);
+                Float notInShadow = 0;
+                Spectrum valueUnhindered(0.0f);
+                if (scene->rayIntersect(shadowRay, hitLoc) && hitLoc.isEmitter()) {
+                    const Emitter *tempEmitter = hitLoc.shape->getEmitter();
+                    
+                    if (tempEmitter != NULL &&
+                        tempEmitter->isOnSurface() && // The next three condition essentially checks if the emitter is a mesh light.
+                        tempEmitter->getShape() != NULL && 
+                        typeid(*(tempEmitter->getShape())) == typeid(TriMesh)) {
+                            // If the shadowRay hits a light source
+                            notInShadow = 1;
+                            valueUnhindered = hitLoc.Le(-shadowRay.d);
+                        }
+                }
+                // In case the shadow ray didn't hit a light source.
+                if (notInShadow < 1)
+                    valueUnhindered = intersectEmitter(scene, shadowRay, dRec);
+
+                if (valueUnhindered.isZero())
+                    continue;
+
+                const Spectrum brdfVal = brdf->eval(bRec) / cosinePdf;
+                const Spectrum brdfValApprox = Analytic::approxBrdfEval(bRec, mInv, mInvDet, amplitude, specularReflectance, diffuseReflectance) / cosinePdf;
+
+                if (pick)
+                    Li += valueUnhindered * (brdfVal - brdfValApprox) / (Float) m_cosineSamples;
+                else
+                    Li += valueUnhindered * (brdfValApprox) / (Float) m_cosineSamples;
+            }
+        }
+
+        if (!pick)
+            Li -= m_subIntegrator->Li(ray, rRec);
+        
         Li = Li.abs();
         //Li.clampNegative();
         return Li;
@@ -351,11 +461,14 @@ private:
     size_t m_emitterSamples;
     size_t m_brdfSamples;
     size_t m_approxBrdfSamples;
+    size_t m_uniformSamples;
+    size_t m_cosineSamples;
     Float m_fracBRDF, m_fracEmitter;
     Float m_weightBRDF, m_weightEmitter;
     ref<SamplingIntegrator> m_subIntegrator;
     bool m_hideEmitters;
     Float sceneSize;
+    bool pick;
 };
 
 MTS_IMPLEMENT_CLASS_S(DirectCvIntegrator, false, SamplingIntegrator);

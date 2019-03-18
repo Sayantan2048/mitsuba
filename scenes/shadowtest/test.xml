@@ -9,6 +9,8 @@
 		<integer name="emitterSamples" value="$es"/>
 		<integer name="brdfSamples" value="$bs"/>
 		<integer name="approxBrdfSamples" value="$abs"/>
+		<integer name="uniformSamples" value="$us"/>
+		<integer name="cosineSamples" value="$cs"/>
 		<integrator type="ltc">
 			<integrator type="analyticDiffuse"/>
 		</integrator>
@@ -178,13 +180,13 @@
 			<string name="distribution" value="ggx"/>
 				<rgb name="diffuseReflectance" value="0.1 0.1 0.1"/>
 				<spectrum name="specularReflectance" value="1"/>
-				<float name="alpha" value="0.3"/>
+				<float name="alpha" value="0.003"/>
 
 			<bsdf type="simplemicrofacet">
 				<string name="distribution" value="ggx"/>
 				<rgb name="diffuseReflectance" value="0.1 0.1 0.1"/>
 				<spectrum name="specularReflectance" value="1"/>
-				<float name="alpha" value="0.3"/>
+				<float name="alpha" value="0.003"/>
 			</bsdf>
 		</bsdf>
 	</shape>

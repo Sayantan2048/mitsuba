@@ -8,6 +8,9 @@
 		<integer name="emitterSamples" value="$es"/>
 		<integer name="brdfSamples" value="$bs"/>
 		<integer name="approxBrdfSamples" value="$abs"/>
+		<integer name="uniformSamples" value="$us"/>
+		<integer name="cosineSamples" value="$cs"/>
+		<integer name="pick" value="$what"/>
 		<integrator type="ltc">
 			<integrator type="analyticDiffuse"/>
 		</integrator>
