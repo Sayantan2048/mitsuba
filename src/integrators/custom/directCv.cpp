@@ -158,17 +158,15 @@ class DirectCvIntegrator : public SamplingIntegrator {
                     // Test for visibility
                     Ray shadowRay(its.p, dRec.d, ray.time);
                     Float notInShadow = 0;
-                    //if (scene->rayIntersect(shadowRay, hitLoc) && hitLoc.isEmitter() && hitLoc.shape->getEmitter() == emitter)
-                        //notInShadow = 1;
+                    if (scene->rayIntersect(shadowRay, hitLoc) && hitLoc.isEmitter() && hitLoc.shape->getEmitter() == emitter)
+                        notInShadow = 1;
                                 
                     if (!valueUnhindered.isZero()) {
                         /* Allocate a record for querying the BSDF */
                         /* Evaluate BSDF * cos(theta) */
                         BSDFSamplingRecord bRec(its, its.toLocal(dRec.d));
-                        Spectrum brdfVal(0.0f);
-                        //if (notInShadow > 0.0f) {
-                            brdfVal = brdf->eval(bRec);
-                        //}
+                        const Spectrum brdfVal = brdf->eval(bRec);
+                        
                         const Spectrum brdfValApprox = Analytic::approxBrdfEval(bRec, mInv, mInvDet, amplitude, specularReflectance, diffuseReflectance);
 
                         Float brdfPdf = m_brdfSamples > 0 ? brdf->pdf(bRec) : 0;
@@ -178,7 +176,7 @@ class DirectCvIntegrator : public SamplingIntegrator {
                                 brdfPdf *  m_fracBRDF) * m_weightEmitter;
 
                         //Log(EInfo, "Weight %f", weight);
-                        Li += valueUnhindered * ( brdfVal - brdfValApprox ) * weight;
+                        Li += valueUnhindered * (brdfVal * notInShadow - brdfValApprox) * weight;
                     }
                 }
             }
@@ -218,13 +216,12 @@ class DirectCvIntegrator : public SamplingIntegrator {
                         }
                 }
                 // In case the shadow ray didn't hit a light source.
-                //if (notInShadow < 1)
-                valueUnhindered = intersectEmitter(scene, shadowRay, dRec);
+                if (notInShadow < 1)
+                    valueUnhindered = intersectEmitter(scene, shadowRay, dRec);
 
                 if (valueUnhindered.isZero())
                     continue;
 
-                //dRec.setQuery(shadowRay, hitLoc);
                 const Spectrum brdfValApprox = Analytic::approxBrdfEval(bRec, mInv, mInvDet, amplitude, specularReflectance, diffuseReflectance) / brdfPdf;
 
                 const Float emitterPdf = m_emitterSamples > 0 ? scene->pdfEmitterDirect(dRec) : 0;
@@ -232,7 +229,7 @@ class DirectCvIntegrator : public SamplingIntegrator {
                 const Float weight = miWeight(brdfPdf * m_fracBRDF,
                     emitterPdf * m_fracEmitter) * m_weightBRDF;
 
-                Li += valueUnhindered * (brdfVal - brdfValApprox) * weight;
+                Li += valueUnhindered * (brdfVal * notInShadow - brdfValApprox) * weight;
             }
         }
 
@@ -271,16 +268,19 @@ class DirectCvIntegrator : public SamplingIntegrator {
                         }
                 }
                 // In case the shadow ray didn't hit a light source.
-                //if (notInShadow < 1)
-                valueUnhindered = intersectEmitter(scene, shadowRay, dRec);
+                if (notInShadow < 1)
+                    valueUnhindered = intersectEmitter(scene, shadowRay, dRec);
+
+                if (valueUnhindered.isZero())
+                    continue;
 
                 const Spectrum brdfVal = brdf->eval(bRec) / approxBrdfPdf;
              
-                Li += valueUnhindered * (brdfVal - brdfValApprox) / (Float) m_approxBrdfSamples;
+                Li += valueUnhindered * (brdfValApprox) / (Float) m_approxBrdfSamples;
             }
         }
        
-        //Li -= m_subIntegrator->Li(ray, rRec);
+        Li -= m_subIntegrator->Li(ray, rRec);
         Li = Li.abs();
         //Li.clampNegative();
         return Li;

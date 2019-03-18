@@ -156,7 +156,7 @@ public:
             bRec.sampledType = BSDF::EGlossyReflection;
         }
         
-        if (Frame::cosTheta(bRec.wo) <= 0) {
+        if (Frame::cosTheta(bRec.wo) <= 0 || std::isnan(bRec.wo.length()) || std::isinf(bRec.wo.length()) || std::abs(bRec.wo.length() - 1) > 1e-5) {
            return Spectrum(0.0f);
         }
 
@@ -164,7 +164,7 @@ public:
         Vector w_ = mInv * bRec.wo;
         Float length = w_.length();
         Float jacobian = mInvDet / (length * length * length);
-        Float D = MAX(0, w_.z / length) * jacobian * amplitude * INV_PI;
+        Float D = MAX(0, w_.z / length) * jacobian * INV_PI;
         pdfSpecular =  D * probSpecular;
 
         // compute pdfDiffuse
@@ -173,7 +173,7 @@ public:
         _pdf = pdfDiffuse + pdfSpecular;
         
         // return bsdf(wo) * cos(wo) / pdf(wo);
-        return _pdf == 0 ? Spectrum(0.0f) : (specular * D + diffuse * Frame::cosTheta(bRec.wo) * INV_PI) / _pdf;
+        return _pdf <= 0 ? Spectrum(0.0f) : (specular * D * amplitude + diffuse * Frame::cosTheta(bRec.wo) * INV_PI) / _pdf;
     }
 };
 MTS_NAMESPACE_END
