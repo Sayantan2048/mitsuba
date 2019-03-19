@@ -7,12 +7,11 @@ class DirectCvIntegrator : public SamplingIntegrator {
     DirectCvIntegrator(const Properties &props) : SamplingIntegrator(props) {
         /* Number of samples to take using the emitter sampling technique */
         m_emitterSamples = props.getSize("emitterSamples", 1);
-        m_brdfSamples = props.getSize("brdfSamples", 1);
+        m_brdfSamples = props.getSize("brdfSamples", 0);
         m_approxBrdfSamples = props.getSize("approxBrdfSamples", 0);
         m_uniformSamples = props.getSize("uniformSamples", 0);
         m_cosineSamples = props.getSize("cosineSamples", 0);
         m_hideEmitters = props.getBoolean("hideEmitters", false);
-        pick = props.getSize("pick", 0) > 0;
        
         //m_brdfSamples = 0;
         Assert(m_emitterSamples + m_brdfSamples + m_approxBrdfSamples + m_uniformSamples + m_cosineSamples > 0);
@@ -24,6 +23,10 @@ class DirectCvIntegrator : public SamplingIntegrator {
     DirectCvIntegrator(Stream *stream, InstanceManager *manager)
      : SamplingIntegrator(stream, manager) {
         m_emitterSamples = stream->readSize();
+        m_brdfSamples = stream->readSize();
+        m_approxBrdfSamples = stream->readSize();
+        m_uniformSamples = stream->readSize();
+        m_cosineSamples = stream->readSize();
         m_hideEmitters = stream->readBool();
         configure();
     }
@@ -31,6 +34,10 @@ class DirectCvIntegrator : public SamplingIntegrator {
     void serialize(Stream *stream, InstanceManager *manager) const {
         SamplingIntegrator::serialize(stream, manager);
         stream->writeSize(m_emitterSamples);
+        stream->writeSize(m_brdfSamples);
+        stream->writeSize(m_approxBrdfSamples);
+        stream->writeSize(m_uniformSamples);
+        stream->writeSize(m_cosineSamples);
         stream->writeBool(m_hideEmitters);
     }
 
@@ -183,7 +190,7 @@ class DirectCvIntegrator : public SamplingIntegrator {
                                 brdfPdf *  m_fracBRDF) * m_weightEmitter;
 
                         //Log(EInfo, "Weight %f", weight);
-                        Li += valueUnhindered * (brdfValApprox * notInShadow - brdfValApprox) * weight;
+                        Li += valueUnhindered * brdfValApprox * weight;
                     }
                 }
             }
@@ -330,10 +337,7 @@ class DirectCvIntegrator : public SamplingIntegrator {
                 const Spectrum brdfVal = brdf->eval(bRec) / uniformPdf;
                 const Spectrum brdfValApprox = Analytic::approxBrdfEval(bRec, mInv, mInvDet, amplitude, specularReflectance, diffuseReflectance) / uniformPdf;
 
-                if (pick)
-                    Li += valueUnhindered * (brdfVal - brdfValApprox) / (Float) m_uniformSamples;
-                else
-                    Li += valueUnhindered * (brdfValApprox) / (Float) m_uniformSamples;
+                Li += valueUnhindered * (brdfVal - brdfValApprox) / (Float) m_uniformSamples;
             }
         }
 
@@ -380,17 +384,13 @@ class DirectCvIntegrator : public SamplingIntegrator {
                 const Spectrum brdfVal = brdf->eval(bRec) / cosinePdf;
                 const Spectrum brdfValApprox = Analytic::approxBrdfEval(bRec, mInv, mInvDet, amplitude, specularReflectance, diffuseReflectance) / cosinePdf;
 
-                if (pick)
-                    Li += valueUnhindered * (brdfVal - brdfValApprox) / (Float) m_cosineSamples;
-                else
-                    Li += valueUnhindered * (brdfValApprox) / (Float) m_cosineSamples;
+                Li += valueUnhindered * (brdfVal - brdfValApprox) / (Float) m_cosineSamples;
             }
         }
 
-        if (!pick)
-            Li -= m_subIntegrator->Li(ray, rRec);
+        //Li -= m_subIntegrator->Li(ray, rRec);
         
-        Li = Li.abs();
+        //Li = Li.abs();
         //Li.clampNegative();
         return Li;
     }
@@ -451,6 +451,10 @@ class DirectCvIntegrator : public SamplingIntegrator {
         std::ostringstream oss;
         oss << "DirectCvIntegrator[" << endl
             << "  emitterSamples = " << m_emitterSamples << "," << endl
+            << "  brdfSamples = " << m_brdfSamples << "," << endl
+            << "  approxBrdfSamples = " << m_approxBrdfSamples << "," << endl
+            << "  cosineSamples = " << m_cosineSamples << "," << endl
+            << "  uniformSamples = " << m_uniformSamples << "," << endl
             << "]";
         return oss.str();
     }
@@ -467,7 +471,6 @@ private:
     ref<SamplingIntegrator> m_subIntegrator;
     bool m_hideEmitters;
     Float sceneSize;
-    bool pick;
 };
 
 MTS_IMPLEMENT_CLASS_S(DirectCvIntegrator, false, SamplingIntegrator);
