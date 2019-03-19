@@ -348,9 +348,8 @@ class DirectCvIntegrator : public SamplingIntegrator {
             Float cosinePdf;
             BSDFSamplingRecord bRec(its, rRec.sampler, ERadiance);
             bRec.wo = warp::squareToCosineHemisphere(sampleArray[i]);
-            cosinePdf = bRec.wo.length();
-            bRec.wo /= cosinePdf;
-            cosinePdf *= INV_PI;
+            cosinePdf = warp::squareToCosineHemispherePdf(bRec.wo);
+            bRec.wo /= bRec.wo.length();
 
             if (cosinePdf > 0) {
                 const Vector wo = its.toWorld(bRec.wo);
