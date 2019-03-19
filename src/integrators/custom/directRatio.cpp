@@ -413,6 +413,8 @@ class DirectRatioIntegrator : public SamplingIntegrator {
         else
             Li[2] /= LiWithoutVisibility[2];
         
+        Li = Li - LiLtc;
+        Li = Li.abs();
 
         return Li;
     }
