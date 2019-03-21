@@ -190,7 +190,7 @@ class DirectCvIntegrator : public SamplingIntegrator {
                                 brdfPdf *  m_fracBRDF) * m_weightEmitter;
 
                         //Log(EInfo, "Weight %f", weight);
-                        Li += valueUnhindered * (brdfVal * notInShadow - brdfValApprox) * weight;
+                        Li += valueUnhindered * (brdfValApprox * notInShadow - brdfValApprox) * weight;
                     }
                 }
             }
@@ -243,7 +243,7 @@ class DirectCvIntegrator : public SamplingIntegrator {
                 const Float weight = miWeight(brdfPdf * m_fracBRDF,
                     emitterPdf * m_fracEmitter) * m_weightBRDF;
 
-                Li += valueUnhindered * ( brdfVal * notInShadow - brdfValApprox) * weight;
+                Li += valueUnhindered * ( brdfValApprox * notInShadow - brdfValApprox) * weight;
             }
         }
 
@@ -290,7 +290,7 @@ class DirectCvIntegrator : public SamplingIntegrator {
 
                 const Spectrum brdfVal = brdf->eval(bRec) / approxBrdfPdf;
              
-                Li += valueUnhindered * (brdfVal * notInShadow - brdfValApprox) / (Float) m_approxBrdfSamples;
+                Li += valueUnhindered * (brdfValApprox * notInShadow - brdfValApprox) / (Float) m_approxBrdfSamples;
             }
         }
 
@@ -337,7 +337,7 @@ class DirectCvIntegrator : public SamplingIntegrator {
                 const Spectrum brdfVal = brdf->eval(bRec) / uniformPdf;
                 const Spectrum brdfValApprox = Analytic::approxBrdfEval(bRec, mInv, mInvDet, amplitude, specularReflectance, diffuseReflectance) / uniformPdf;
 
-                Li += valueUnhindered * (brdfVal * notInShadow - brdfValApprox) / (Float) m_uniformSamples;
+                Li += valueUnhindered * (brdfValApprox * notInShadow - brdfValApprox) / (Float) m_uniformSamples;
             }
         }
 
@@ -384,7 +384,7 @@ class DirectCvIntegrator : public SamplingIntegrator {
                 const Spectrum brdfVal = brdf->eval(bRec) / cosinePdf;
                 const Spectrum brdfValApprox = Analytic::approxBrdfEval(bRec, mInv, mInvDet, amplitude, specularReflectance, diffuseReflectance) / cosinePdf;
 
-                Li += valueUnhindered * (brdfVal * notInShadow - brdfValApprox) / (Float) m_cosineSamples;
+                Li += valueUnhindered * (brdfValApprox * notInShadow - brdfValApprox) / (Float) m_cosineSamples;
             }
         }
 
