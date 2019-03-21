@@ -192,7 +192,7 @@ class DirectRatioIntegrator : public SamplingIntegrator {
                         const Float weight = miWeight(dRec.pdf * m_fracEmitter,
                                 brdfPdf *  m_fracBRDF) * m_weightEmitter;
 
-                        LiWithVisibility += valueUnhindered * brdfVal * weight;
+                        LiWithVisibility += valueUnhindered * brdfVal * notInShadow * weight;
                         LiWithoutVisibility += valueUnhindered * brdfValApprox * weight;
                     }
                 }
@@ -242,11 +242,11 @@ class DirectRatioIntegrator : public SamplingIntegrator {
                 const Spectrum brdfValApprox = Analytic::approxBrdfEval(bRec, mInv, mInvDet, amplitude, specularReflectance, diffuseReflectance) / brdfPdf;
 
                 const Float emitterPdf = m_emitterSamples > 0 ? scene->pdfEmitterDirect(dRec) : 0;
-                /* Weight using the power heuristic */
+                
                 const Float weight = miWeight(brdfPdf * m_fracBRDF,
                     emitterPdf * m_fracEmitter) * m_weightBRDF;
 
-                LiWithVisibility += valueUnhindered * brdfVal * weight;
+                LiWithVisibility += valueUnhindered * brdfVal * notInShadow * weight;
                 LiWithoutVisibility += valueUnhindered * brdfValApprox * weight;
             }
         }
@@ -294,7 +294,7 @@ class DirectRatioIntegrator : public SamplingIntegrator {
 
                 const Spectrum brdfVal = brdf->eval(bRec) / approxBrdfPdf;
              
-                LiWithVisibility += valueUnhindered * brdfVal / (Float) m_approxBrdfSamples;
+                LiWithVisibility += valueUnhindered * brdfVal * notInShadow / (Float) m_approxBrdfSamples;
                 LiWithoutVisibility += valueUnhindered * brdfValApprox / (Float) m_approxBrdfSamples;
             }
         }
@@ -340,7 +340,7 @@ class DirectRatioIntegrator : public SamplingIntegrator {
                 const Spectrum brdfVal = brdf->eval(bRec) / uniformPdf;
                 const Spectrum brdfValApprox = Analytic::approxBrdfEval(bRec, mInv, mInvDet, amplitude, specularReflectance, diffuseReflectance) / uniformPdf;
 
-                LiWithVisibility += valueUnhindered * brdfVal / (Float) m_uniformSamples;
+                LiWithVisibility += valueUnhindered * brdfVal  * notInShadow / (Float) m_uniformSamples;
                 LiWithoutVisibility += valueUnhindered * brdfValApprox / (Float) m_uniformSamples;
             }
         }
@@ -388,7 +388,7 @@ class DirectRatioIntegrator : public SamplingIntegrator {
                 const Spectrum brdfVal = brdf->eval(bRec) / cosinePdf;
                 const Spectrum brdfValApprox = Analytic::approxBrdfEval(bRec, mInv, mInvDet, amplitude, specularReflectance, diffuseReflectance) / cosinePdf;
 
-                LiWithVisibility += valueUnhindered * brdfVal / (Float) m_cosineSamples;
+                LiWithVisibility += valueUnhindered * brdfVal * notInShadow / (Float) m_cosineSamples;
                 LiWithoutVisibility += valueUnhindered * brdfValApprox / (Float) m_cosineSamples;
             }
         }
@@ -413,9 +413,8 @@ class DirectRatioIntegrator : public SamplingIntegrator {
         else
             Li[2] /= LiWithoutVisibility[2];
         
-        Li = Li - LiLtc;
-        Li = Li.abs();
-
+        //Li = Li - LiLtc;
+        //Li = Li.abs();
         return Li;
     }
 
