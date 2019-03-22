@@ -5,7 +5,7 @@
 -->
 <scene version="0.6.0">
 	
-    <integrator type="directCv">
+    <integrator type="directRatio">
 		<integer name="emitterSamples" value="$es"/>
 		<integer name="brdfSamples" value="$bs"/>
 		<integer name="approxBrdfSamples" value="$abs"/>
