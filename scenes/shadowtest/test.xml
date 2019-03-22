@@ -180,7 +180,7 @@
 			<string name="distribution" value="ggx"/>
 				<rgb name="diffuseReflectance" value="0.1 0.1 0.1"/>
 				<spectrum name="specularReflectance" value="1"/>
-				<float name="alpha" value="0.003"/>
+				<float name="alpha" value="$alpha"/>
 
 			<bsdf type="simplemicrofacet">
 				<string name="distribution" value="ggx"/>
