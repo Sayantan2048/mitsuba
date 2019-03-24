@@ -179,7 +179,7 @@ class DirectCvIntegrator : public SamplingIntegrator {
                         /* Allocate a record for querying the BSDF */
                         /* Evaluate BSDF * cos(theta) */
                         BSDFSamplingRecord bRec(its, its.toLocal(dRec.d));
-                        //const Spectrum brdfVal = brdf->eval(bRec);
+                        const Spectrum brdfVal = brdf->eval(bRec);
                         
                         const Spectrum brdfValApprox = Analytic::approxBrdfEval(bRec, mInv, mInvDet, amplitude, specularReflectance, diffuseReflectance);
 
@@ -190,7 +190,7 @@ class DirectCvIntegrator : public SamplingIntegrator {
                                 brdfPdf *  m_fracBRDF) * m_weightEmitter;
 
                         //Log(EInfo, "Weight %f", weight);
-                        Li += valueUnhindered * (brdfValApprox * notInShadow - brdfValApprox) * weight;
+                        Li += valueUnhindered * (brdfVal * notInShadow) * weight;
                     }
                 }
             }
@@ -243,7 +243,7 @@ class DirectCvIntegrator : public SamplingIntegrator {
                 const Float weight = miWeight(brdfPdf * m_fracBRDF,
                     emitterPdf * m_fracEmitter) * m_weightBRDF;
 
-                Li += valueUnhindered * ( brdfValApprox * notInShadow - brdfValApprox) * weight;
+                Li += valueUnhindered * ( brdfVal * notInShadow) * weight;
             }
         }
 
@@ -388,10 +388,10 @@ class DirectCvIntegrator : public SamplingIntegrator {
             }
         }
 
-        Li += m_subIntegrator->Li(ray, rRec);
+        //Li += m_subIntegrator->Li(ray, rRec);
         
         //Li = Li.abs();
-        Li.clampNegative();
+        //Li.clampNegative();
         return Li;
     }
 
