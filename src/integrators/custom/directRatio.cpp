@@ -15,8 +15,8 @@ class DirectRatioIntegrator : public SamplingIntegrator {
        
         //m_brdfSamples = 0;
         Assert(m_emitterSamples + m_brdfSamples + m_approxBrdfSamples + m_uniformSamples + m_cosineSamples > 0);
-        // Either do MIS or approxBrdfSamples
-        Assert((m_emitterSamples + m_brdfSamples) * m_approxBrdfSamples * m_uniformSamples * m_cosineSamples == 0);
+        // Either do MIS or other sampling
+        Assert((m_emitterSamples + m_brdfSamples) * (m_approxBrdfSamples + m_uniformSamples + m_cosineSamples) == 0);
     }
 
     /// Unserialize from a binary data stream
@@ -73,7 +73,7 @@ class DirectRatioIntegrator : public SamplingIntegrator {
         if (!m_subIntegrator->preprocess(scene, queue, job, sceneResID, sensorResID, samplerResID))
             return false;
 
-        sceneSize = scene->getBSphere().radius;
+        sceneSize = scene->getBSphere().radius * 50;
         
         auto emitters = scene->getEmitters();
 
@@ -162,9 +162,10 @@ class DirectRatioIntegrator : public SamplingIntegrator {
             /* Only use direct illumination sampling when the surface's
                BSDF has smooth (i.e. non-Dirac delta) component */
             for (size_t i=0; i < m_emitterSamples; ++i) {
+                // The idea here is to sample a ray according to emitter sampling, if it is blocked by a blocker then only compute the second part i.e. <-g> part of cv estimate with all light sources along the sampled ray.
                 /* Estimate the direct illumination if this is requested */
-                // Do not test for visibility yet.
-                Spectrum valueUnhindered = scene->sampleEmitterDirect(dRec, sampleArray[i], false); // returns radiance / pdfEmitter
+                // Do test for shadow yet
+                Spectrum valueUnhinderedFirstHit = scene->sampleEmitterDirect(dRec, sampleArray[i], false); // returns radiance / pdfEmitter
                 const Emitter *emitter = static_cast<const Emitter *>(dRec.object);
 
                 if (dRec.pdf > 0 && // emitter is NULL when dRec.pdf is zero. 
@@ -174,27 +175,34 @@ class DirectRatioIntegrator : public SamplingIntegrator {
                     
                     // Test for visibility
                     Ray shadowRay(its.p, dRec.d, ray.time);
+                    Spectrum valueUnhinderedAll(0.0f);
+                    // sum of radiance from all light sources igonoring all blockers and occlusion by light source itself.
+                    intersectEmitter(scene, shadowRay, valueUnhinderedAll);
+                    valueUnhinderedAll /= dRec.pdf;
+
+                    if (valueUnhinderedAll.isZero())
+                        continue;
+                    
+                    // Check if the shade point is in shadow.
                     Float notInShadow = 0;
                     if (scene->rayIntersect(shadowRay, hitLoc) && hitLoc.isEmitter() && hitLoc.shape->getEmitter() == emitter)
                         notInShadow = 1;
                                 
-                    if (!valueUnhindered.isZero()) {
-                        /* Allocate a record for querying the BSDF */
-                        /* Evaluate BSDF * cos(theta) */
-                        BSDFSamplingRecord bRec(its, its.toLocal(dRec.d));
-                        //const Spectrum brdfVal = brdf->eval(bRec);
+                    /* Allocate a record for querying the BSDF */
+                    /* Evaluate BSDF * cos(theta) */
+                    BSDFSamplingRecord bRec(its, its.toLocal(dRec.d));
+                    const Spectrum brdfVal = brdf->eval(bRec);
                         
-                        const Spectrum brdfValApprox = Analytic::approxBrdfEval(bRec, mInv, mInvDet, amplitude, specularReflectance, diffuseReflectance);
+                    const Spectrum brdfValApprox = Analytic::approxBrdfEval(bRec, mInv, mInvDet, amplitude, specularReflectance, diffuseReflectance);
 
-                        Float brdfPdf = m_brdfSamples > 0 ? brdf->pdf(bRec) : 0;
+                    Float brdfPdf = m_brdfSamples > 0 ? brdf->pdf(bRec) : 0;
 
-                        /* Weight using the power heuristic */
-                        const Float weight = miWeight(dRec.pdf * m_fracEmitter,
-                                brdfPdf *  m_fracBRDF) * m_weightEmitter;
+                    const Float weight = miWeight(dRec.pdf * m_fracEmitter,
+                            brdfPdf *  m_fracBRDF) * m_weightEmitter;
 
-                        LiWithVisibility += valueUnhindered * brdfValApprox * notInShadow * weight;
-                        LiWithoutVisibility += valueUnhindered * brdfValApprox * weight;
-                    }
+                    LiWithVisibility += valueUnhinderedFirstHit * brdfVal * notInShadow * weight;
+                    LiWithoutVisibility += valueUnhinderedAll * brdfValApprox * weight;
+                    
                 }
             }
         }
@@ -214,11 +222,17 @@ class DirectRatioIntegrator : public SamplingIntegrator {
 
             if (brdfPdf > 0) {
                 const Vector wo = its.toWorld(bRec.wo);
-
                 // Trace a ray in this direction
                 Ray shadowRay(its.p, wo, ray.time);
-                Float notInShadow = 0;
-                Spectrum valueUnhindered(0.0f);
+
+                Spectrum valueUnhinderedAll(0.0f);
+                // sum of radiance from all light sources igonoring all blockers and occlusion by light source itself.
+                intersectEmitter(scene, shadowRay, dRec, valueUnhinderedAll);
+
+                if (valueUnhinderedAll.isZero())
+                    continue;
+
+                Spectrum valueDirect(0.0f);
                 if (scene->rayIntersect(shadowRay, hitLoc) && hitLoc.isEmitter()) {
                     const Emitter *tempEmitter = hitLoc.shape->getEmitter();
                     
@@ -227,27 +241,17 @@ class DirectRatioIntegrator : public SamplingIntegrator {
                         tempEmitter->getShape() != NULL && 
                         typeid(*(tempEmitter->getShape())) == typeid(TriMesh)) {
                             // If the shadowRay hits a light source
-                            notInShadow = 1;
-                            valueUnhindered = hitLoc.Le(-shadowRay.d);
+                            valueDirect = hitLoc.Le(-shadowRay.d);
                             dRec.setQuery(shadowRay, hitLoc);
                         }
                 }
-                // In case the shadow ray didn't hit a light source.
-                if (notInShadow < 1)
-                    valueUnhindered = intersectEmitter(scene, shadowRay, dRec);
-
-                if (valueUnhindered.isZero())
-                    continue;
-
                 const Spectrum brdfValApprox = Analytic::approxBrdfEval(bRec, mInv, mInvDet, amplitude, specularReflectance, diffuseReflectance) / brdfPdf;
-
                 const Float emitterPdf = m_emitterSamples > 0 ? scene->pdfEmitterDirect(dRec) : 0;
-                
                 const Float weight = miWeight(brdfPdf * m_fracBRDF,
                     emitterPdf * m_fracEmitter) * m_weightBRDF;
 
-                LiWithVisibility += valueUnhindered * brdfValApprox * notInShadow * weight;
-                LiWithoutVisibility += valueUnhindered * brdfValApprox * weight;
+                LiWithVisibility += valueDirect * brdfVal * weight;
+                LiWithoutVisibility += valueUnhinderedAll * brdfValApprox * weight;
             }
         }
 
@@ -268,11 +272,17 @@ class DirectRatioIntegrator : public SamplingIntegrator {
 
             if (approxBrdfPdf > 0) {
                 const Vector wo = its.toWorld(bRec.wo);
-
                 // Trace a ray in this direction
                 Ray shadowRay(its.p, wo, ray.time);
-                Float notInShadow = 0;
-                Spectrum valueUnhindered(0.0f);
+
+                Spectrum valueUnhinderedAll(0.0f);
+                // sum of radiance from all light sources igonoring all blockers and occlusion by light source itself.
+                intersectEmitter(scene, shadowRay, valueUnhinderedAll);
+
+                if (valueUnhinderedAll.isZero())
+                    continue;
+                
+                Spectrum valueDirect(0.0f);
                 if (scene->rayIntersect(shadowRay, hitLoc) && hitLoc.isEmitter()) {
                     const Emitter *tempEmitter = hitLoc.shape->getEmitter();
                     
@@ -281,21 +291,13 @@ class DirectRatioIntegrator : public SamplingIntegrator {
                         tempEmitter->getShape() != NULL && 
                         typeid(*(tempEmitter->getShape())) == typeid(TriMesh)) {
                             // If the shadowRay hits a light source
-                            notInShadow = 1;
-                            valueUnhindered = hitLoc.Le(-shadowRay.d);
+                            valueDirect = hitLoc.Le(-shadowRay.d);
                         }
                 }
-                // In case the shadow ray didn't hit a light source.
-                if (notInShadow < 1)
-                    valueUnhindered = intersectEmitter(scene, shadowRay, dRec);
-
-                if (valueUnhindered.isZero())
-                    continue;
-
-                //const Spectrum brdfVal = brdf->eval(bRec) / approxBrdfPdf;
+                const Spectrum brdfVal = brdf->eval(bRec) / approxBrdfPdf;
              
-                LiWithVisibility += valueUnhindered * brdfValApprox * notInShadow / (Float) m_approxBrdfSamples;
-                LiWithoutVisibility += valueUnhindered * brdfValApprox / (Float) m_approxBrdfSamples;
+                LiWithVisibility += valueDirect * brdfVal / (Float) m_approxBrdfSamples;
+                LiWithoutVisibility += valueUnhinderedAll * brdfValApprox / (Float) m_approxBrdfSamples;
             }
         }
 
@@ -314,10 +316,17 @@ class DirectRatioIntegrator : public SamplingIntegrator {
             if (uniformPdf > 0) {
                 const Vector wo = its.toWorld(bRec.wo);
 
-                // Trace a ray in this direction
+                 // Trace a ray in this direction
                 Ray shadowRay(its.p, wo, ray.time);
-                Float notInShadow = 0;
-                Spectrum valueUnhindered(0.0f);
+
+                Spectrum valueUnhinderedAll(0.0f);
+                // sum of radiance from all light sources igonoring all blockers and occlusion by light source itself.
+                intersectEmitter(scene, shadowRay, valueUnhinderedAll);
+
+                if (valueUnhinderedAll.isZero())
+                    continue;
+
+                Spectrum valueDirect(0.0f);
                 if (scene->rayIntersect(shadowRay, hitLoc) && hitLoc.isEmitter()) {
                     const Emitter *tempEmitter = hitLoc.shape->getEmitter();
                     
@@ -326,22 +335,14 @@ class DirectRatioIntegrator : public SamplingIntegrator {
                         tempEmitter->getShape() != NULL && 
                         typeid(*(tempEmitter->getShape())) == typeid(TriMesh)) {
                             // If the shadowRay hits a light source
-                            notInShadow = 1;
-                            valueUnhindered = hitLoc.Le(-shadowRay.d);
+                            valueDirect = hitLoc.Le(-shadowRay.d);
                         }
                 }
-                // In case the shadow ray didn't hit a light source.
-                if (notInShadow < 1)
-                    valueUnhindered = intersectEmitter(scene, shadowRay, dRec);
-
-                if (valueUnhindered.isZero())
-                    continue;
-
-                //const Spectrum brdfVal = brdf->eval(bRec) / uniformPdf;
+                const Spectrum brdfVal = brdf->eval(bRec) / uniformPdf;
                 const Spectrum brdfValApprox = Analytic::approxBrdfEval(bRec, mInv, mInvDet, amplitude, specularReflectance, diffuseReflectance) / uniformPdf;
 
-                LiWithVisibility += valueUnhindered * brdfValApprox  * notInShadow / (Float) m_uniformSamples;
-                LiWithoutVisibility += valueUnhindered * brdfValApprox / (Float) m_uniformSamples;
+                LiWithVisibility += valueDirect * brdfVal / (Float) m_uniformSamples;
+                LiWithoutVisibility += valueUnhinderedAll * brdfValApprox / (Float) m_uniformSamples;
             }
         }
 
@@ -362,10 +363,17 @@ class DirectRatioIntegrator : public SamplingIntegrator {
             if (cosinePdf > 0) {
                 const Vector wo = its.toWorld(bRec.wo);
 
-                // Trace a ray in this direction
+                 // Trace a ray in this direction
                 Ray shadowRay(its.p, wo, ray.time);
-                Float notInShadow = 0;
-                Spectrum valueUnhindered(0.0f);
+
+                Spectrum valueUnhinderedAll(0.0f);
+                // sum of radiance from all light sources igonoring all blockers and occlusion by light source itself.
+                intersectEmitter(scene, shadowRay, valueUnhinderedAll);
+
+                if (valueUnhinderedAll.isZero())
+                    continue;
+
+                Spectrum valueDirect(0.0f);
                 if (scene->rayIntersect(shadowRay, hitLoc) && hitLoc.isEmitter()) {
                     const Emitter *tempEmitter = hitLoc.shape->getEmitter();
                     
@@ -374,22 +382,14 @@ class DirectRatioIntegrator : public SamplingIntegrator {
                         tempEmitter->getShape() != NULL && 
                         typeid(*(tempEmitter->getShape())) == typeid(TriMesh)) {
                             // If the shadowRay hits a light source
-                            notInShadow = 1;
-                            valueUnhindered = hitLoc.Le(-shadowRay.d);
+                            valueDirect = hitLoc.Le(-shadowRay.d);
                         }
                 }
-                // In case the shadow ray didn't hit a light source.
-                if (notInShadow < 1)
-                    valueUnhindered = intersectEmitter(scene, shadowRay, dRec);
-
-                if (valueUnhindered.isZero())
-                    continue;
-
-                //const Spectrum brdfVal = brdf->eval(bRec) / cosinePdf;
+                const Spectrum brdfVal = brdf->eval(bRec) / cosinePdf;
                 const Spectrum brdfValApprox = Analytic::approxBrdfEval(bRec, mInv, mInvDet, amplitude, specularReflectance, diffuseReflectance) / cosinePdf;
 
-                LiWithVisibility += valueUnhindered * brdfValApprox * notInShadow / (Float) m_cosineSamples;
-                LiWithoutVisibility += valueUnhindered * brdfValApprox / (Float) m_cosineSamples;
+                LiWithVisibility += valueDirect * brdfVal / (Float) m_cosineSamples;
+                LiWithoutVisibility += valueUnhinderedAll * brdfValApprox / (Float) m_cosineSamples;
             }
         }
        
@@ -418,7 +418,8 @@ class DirectRatioIntegrator : public SamplingIntegrator {
         return Li;
     }
 
-    Spectrum intersectEmitter(const Scene *scene, const Ray &shadowRay, DirectSamplingRecord &dRec) const {
+    
+    Spectrum intersectEmitter(const Scene *scene, const Ray &shadowRay, DirectSamplingRecord &dRec, Spectrum &LiAllHit) const {
         Float distance = sceneSize;
         Intersection its;
         Spectrum Li(0.0f);
@@ -443,26 +444,61 @@ class DirectRatioIntegrator : public SamplingIntegrator {
                                 vertexPositions[triangles[i].idx[2]] - vertexPositions[triangles[i].idx[1]]);
 
                     if (Triangle::rayIntersect(vertexPositions[triangles[i].idx[0]], vertexPositions[triangles[i].idx[1]], vertexPositions[triangles[i].idx[2]], shadowRay, u, v, t)
-                        && t < distance && dot(n, -shadowRay.d) > 0) {
-                        Li = emitter->getRadiance();
+                        && dot(n, -shadowRay.d) > 0) {
+                        
+                        LiAllHit += emitter->getRadiance();
+                        if (t < distance) {
+                            Li = emitter->getRadiance();
 
-                        // Fill dRec
-                        dRec.object = emitter;
-                        dRec.d = shadowRay.d;
-                        dRec.n = normalize(n);
-                        dRec.dist = t;
-                        // Not required for MeshLights.
-                        //dRec.measure = ESolidAngle;
-                        //dRec.p = u * vertexPositions[triangles[i].idx[0]] + v * vertexPositions[triangles[i].idx[1]] + (1 - u - v) * vertexPositions[triangles[i].idx[2]];
-                        //dRec.uv = Point2(u, v);
+                            // Fill dRec
+                            dRec.object = emitter;
+                            dRec.d = shadowRay.d;
+                            dRec.n = normalize(n);
+                            dRec.dist = t;
+                            // Not required for MeshLights.
+                            //dRec.measure = ESolidAngle;
+                            //dRec.p = u * vertexPositions[triangles[i].idx[0]] + v * vertexPositions[triangles[i].idx[1]] + (1 - u - v) * vertexPositions[triangles[i].idx[2]];
+                            //dRec.uv = Point2(u, v);
 
-                        distance = t;
+                            distance = t;
+                        }
                     } 
                 }
             }
         }
 
         return Li;
+    }
+
+    void intersectEmitter(const Scene *scene, const Ray &shadowRay, Spectrum &LiAllHit) const {
+        Float distance = sceneSize;
+        Intersection its;
+                        
+        // Brute force ray-emitter intersection.
+        for (auto emitter : scene->getEmitters()) {
+            if (emitter->isOnSurface() && 
+                emitter->getShape() != NULL && 
+                typeid(*(emitter->getShape())) == typeid(TriMesh)) {
+
+                const TriMesh *triMesh = static_cast<const TriMesh *>(emitter->getShape());
+                const Triangle *triangles = triMesh->getTriangles();
+                const Point *vertexPositions = triMesh->getVertexPositions();
+
+                for (size_t i = 0; i < triMesh->getTriangleCount(); i++) {
+                    Float u,v;// Unused barycentric coords
+                    Float t; 
+                    Vector n = cross(vertexPositions[triangles[i].idx[1]] - vertexPositions[triangles[i].idx[0]], 
+                                vertexPositions[triangles[i].idx[2]] - vertexPositions[triangles[i].idx[1]]);
+
+                    if (Triangle::rayIntersect(vertexPositions[triangles[i].idx[0]], vertexPositions[triangles[i].idx[1]], vertexPositions[triangles[i].idx[2]], shadowRay, u, v, t)
+                        && dot(n, -shadowRay.d) > 0) {
+                        
+                        LiAllHit += emitter->getRadiance();
+                       
+                    } 
+                }
+            }
+        }
     }
 
     inline Float miWeight(Float pdfA, Float pdfB) const {
