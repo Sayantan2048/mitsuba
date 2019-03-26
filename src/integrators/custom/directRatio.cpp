@@ -471,7 +471,6 @@ class DirectRatioIntegrator : public SamplingIntegrator {
     }
 
     void intersectEmitter(const Scene *scene, const Ray &shadowRay, Spectrum &LiAllHit) const {
-        Float distance = sceneSize;
         Intersection its;
                         
         // Brute force ray-emitter intersection.
