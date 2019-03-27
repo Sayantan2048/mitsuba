@@ -188,7 +188,7 @@ class DirectCvIntegrator : public SamplingIntegrator {
                     /* Allocate a record for querying the BSDF */
                     /* Evaluate BSDF * cos(theta) */
                      BSDFSamplingRecord bRec(its, its.toLocal(dRec.d));
-                    const Spectrum brdfVal = brdf->eval(bRec);
+                    //const Spectrum brdfVal = brdf->eval(bRec);
                         
                     const Spectrum brdfValApprox = Analytic::approxBrdfEval(bRec, mInv, mInvDet, amplitude, specularReflectance, diffuseReflectance);
 
@@ -199,7 +199,7 @@ class DirectCvIntegrator : public SamplingIntegrator {
                             brdfPdf *  m_fracBRDF) * m_weightEmitter;
 
                     //Log(EInfo, "Weight %f", weight);
-                    Li += (valueUnhinderedFirstHit * brdfVal * notInShadow - valueUnhinderedAll * brdfValApprox) * weight;
+                    Li += (valueUnhinderedFirstHit * brdfValApprox * notInShadow - valueUnhinderedAll * brdfValApprox) * weight;
                     
                 }
             }
@@ -248,7 +248,7 @@ class DirectCvIntegrator : public SamplingIntegrator {
                 const Float weight = miWeight(brdfPdf * m_fracBRDF,
                     emitterPdf * m_fracEmitter) * m_weightBRDF;
 
-                Li += (valueDirect * brdfVal - valueUnhinderedAll * brdfValApprox) * weight;
+                Li += (valueDirect * brdfValApprox - valueUnhinderedAll * brdfValApprox) * weight;
             }
         }
 
@@ -291,8 +291,8 @@ class DirectCvIntegrator : public SamplingIntegrator {
                             valueDirect = hitLoc.Le(-shadowRay.d);
                         }
                 }
-                const Spectrum brdfVal = brdf->eval(bRec) / approxBrdfPdf;
-                Li += (valueDirect * brdfVal  - valueUnhinderedAll * brdfValApprox) / (Float) m_approxBrdfSamples;
+                //const Spectrum brdfVal = brdf->eval(bRec) / approxBrdfPdf;
+                Li += (valueDirect * brdfValApprox  - valueUnhinderedAll * brdfValApprox) / (Float) m_approxBrdfSamples;
             }
         }
 
@@ -335,10 +335,10 @@ class DirectCvIntegrator : public SamplingIntegrator {
                         }
                 }
 
-                const Spectrum brdfVal = brdf->eval(bRec) / uniformPdf;
+                //const Spectrum brdfVal = brdf->eval(bRec) / uniformPdf;
                 const Spectrum brdfValApprox = Analytic::approxBrdfEval(bRec, mInv, mInvDet, amplitude, specularReflectance, diffuseReflectance) / uniformPdf;
 
-                Li += (valueDirect * brdfVal - valueUnhinderedAll * brdfValApprox) / (Float) m_uniformSamples;
+                Li += (valueDirect * brdfValApprox - valueUnhinderedAll * brdfValApprox) / (Float) m_uniformSamples;
             }
         }
 
@@ -381,10 +381,10 @@ class DirectCvIntegrator : public SamplingIntegrator {
                         }
                 }
 
-                const Spectrum brdfVal = brdf->eval(bRec) / cosinePdf;
+                //const Spectrum brdfVal = brdf->eval(bRec) / cosinePdf;
                 const Spectrum brdfValApprox = Analytic::approxBrdfEval(bRec, mInv, mInvDet, amplitude, specularReflectance, diffuseReflectance) / cosinePdf;
 
-                Li += (valueDirect * brdfVal - valueUnhinderedAll * brdfValApprox) / (Float) m_cosineSamples;
+                Li += (valueDirect * brdfValApprox - valueUnhinderedAll * brdfValApprox) / (Float) m_cosineSamples;
             }
         }
 

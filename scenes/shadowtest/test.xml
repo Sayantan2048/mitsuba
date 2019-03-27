@@ -5,6 +5,7 @@
 -->
 <scene version="0.6.0">
 	
+	
     <integrator type="directCv">
 		<integer name="emitterSamples" value="$es"/>
 		<integer name="brdfSamples" value="$bs"/>
@@ -15,10 +16,12 @@
 			<integrator type="analyticDiffuse"/>
 		</integrator>
 	</integrator>
- 
-    <!--
-    <integrator type="ltc">
+	
+	<!--
+	<integrator type="pathCv">
+		<integrator type="ltc">
 			<integrator type="analyticDiffuse"/>
+		</integrator>
 	</integrator>
 	-->
     <shape type="obj">
