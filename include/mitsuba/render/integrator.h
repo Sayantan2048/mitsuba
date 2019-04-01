@@ -199,13 +199,13 @@ public:
     /// Construct an invalid radiance query record
     inline RadianceQueryRecord()
      : type(0), scene(NULL), sampler(NULL), medium(NULL),
-       depth(0), alpha(0), dist(-1), extra(0) {
+       depth(0), alpha(0), dist(-1), extra(0), sampleIndex(-1), pixelPosition(Point2i(-1, -1)) {
     }
 
     /// Construct a radiance query record for the given scene and sampler
     inline RadianceQueryRecord(const Scene *scene, Sampler *sampler)
      : type(0), scene(scene), sampler(sampler), medium(NULL),
-       depth(0), alpha(0), dist(-1), extra(0) {
+       depth(0), alpha(0), dist(-1), extra(0), sampleIndex(-1), pixelPosition(Point2i(-1, -1)) {
     }
 
     /// Copy constructor
@@ -221,6 +221,8 @@ public:
         depth = 1;
         extra = 0;
         alpha = 1;
+		sampleIndex = -1;
+		pixelPosition = Point2i(-1, -1);
     }
 
     /// Initialize the query record for a recursive query
@@ -231,6 +233,8 @@ public:
         depth = parent.depth+1;
         medium = parent.medium;
         extra = parent.extra;
+		sampleIndex = parent.sampleIndex;
+		pixelPosition = parent.pixelPosition;
     }
 
     /// Initialize the query record for a recursive query
@@ -241,6 +245,8 @@ public:
         depth = parent.depth+1;
         medium = parent.medium;
         extra = parent.extra;
+		sampleIndex = parent.sampleIndex;
+		pixelPosition = parent.pixelPosition;
     }
 
     /**
@@ -306,6 +312,13 @@ public:
      * is dependent on the particular integrator implementation. (*)
      */
     int extra;
+
+	int sampleIndex;
+	Point2i pixelPosition;
+
+	Spectrum directLtc;
+	Spectrum stochasticLtc;
+	Float notInShadow;
 };
 
 /** \brief Abstract base class, which describes integrators

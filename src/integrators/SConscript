@@ -25,6 +25,7 @@ plugins += env.SharedLibrary('ltc', ['custom/ltc.cpp'])
 plugins += env.SharedLibrary('analyticDiffuse', ['custom/analyticDiffuse.cpp'])
 plugins += env.SharedLibrary('directCv', ['custom/directCv.cpp'])
 plugins += env.SharedLibrary('directRatio', ['custom/directRatio.cpp'])
+plugins += env.SharedLibrary('pathCv', ['custom/pathCv.cpp'])
 
 # Bidirectional techniques
 bidirEnv = env.Clone()

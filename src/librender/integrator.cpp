@@ -151,9 +151,9 @@ void SamplingIntegrator::renderBlock(const Scene *scene,
     Point2 apertureSample(0.5f);
     Float timeSample = 0.5f;
     RayDifferential sensorRay;
-
+	
     block->clear();
-
+	
     uint32_t queryType = RadianceQueryRecord::ESensorRay;
 
     if (!sensor->getFilm()->hasAlpha()) /* Don't compute an alpha channel if we don't have to */
@@ -169,7 +169,7 @@ void SamplingIntegrator::renderBlock(const Scene *scene,
         for (size_t j = 0; j<sampler->getSampleCount(); j++) {
             rRec.newQuery(queryType, sensor->getMedium());
             Point2 samplePos(Point2(offset) + Vector2(rRec.nextSample2D()));
-
+			
             if (needsApertureSample)
                 apertureSample = rRec.nextSample2D();
             if (needsTimeSample)

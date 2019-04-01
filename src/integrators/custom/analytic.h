@@ -173,7 +173,25 @@ public:
         _pdf = pdfDiffuse + pdfSpecular;
         
         // return bsdf(wo) * cos(wo) / pdf(wo);
-        return _pdf <= 0 ? Spectrum(0.0f) : (specular * D * amplitude + diffuse * Frame::cosTheta(bRec.wo) * INV_PI) / _pdf;
+        return _pdf <= Epsilon ? Spectrum(0.0f) : (specular * D * amplitude + diffuse * Frame::cosTheta(bRec.wo) * INV_PI) / _pdf;
+    }
+
+    static Float pdf(const BSDFSamplingRecord &bRec, const Matrix3x3 &mInv, const Float mInvDet, const Spectrum &specular, const Spectrum diffuse) {
+        if (Frame::cosTheta(bRec.wi) <= 0 ||
+            Frame::cosTheta(bRec.wo) <= 0)
+                return 0;
+        
+        Float dAvg = diffuse.getLuminance(),
+              sAvg = specular.getLuminance();
+        
+        Float probSpecular = sAvg / (sAvg + dAvg);
+
+        Vector w_ = mInv * bRec.wo;
+        Float length = w_.length();
+        Float jacobian = mInvDet / (length * length * length);
+        Float D = MAX(0, w_.z / length) * jacobian * INV_PI;
+         
+        return D * probSpecular + (1.0f - probSpecular) * warp::squareToCosineHemispherePdf(bRec.wo);
     }
 };
 MTS_NAMESPACE_END

@@ -146,7 +146,7 @@ public:
 
         /* Check if all sample values are valid */
         for (int i=0; i<channels; ++i) {
-            if (EXPECT_NOT_TAKEN((!std::isfinite(value[i]) || value[i] < 0) && m_warn))
+            if (EXPECT_NOT_TAKEN((!std::isfinite(value[i])) && m_warn))
                 goto bad_sample;
         }
 
@@ -184,6 +184,18 @@ public:
                         *dest++ += weight * value[k];
                 }
             }
+
+			for (int y = min.y, yr = 0; y <= max.y; ++y, ++yr) {
+				Float *dest = m_bitmap->getFloatData()
+					+ (y * (size_t)size.x + min.x) * channels;
+
+				for (int x = min.x, xr = 0; x <= max.x; ++x, ++xr) {
+					for (int k = 0; k < channels; ++k) {
+						*dest = *dest > 0 ? *dest : 0;
+						*dest++;
+					}
+				}
+			}
         }
 
         return true;

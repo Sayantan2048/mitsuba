@@ -5,7 +5,7 @@
 -->
 <scene version="0.6.0">
 	
-	
+	<!--
     <integrator type="directCv">
 		<integer name="emitterSamples" value="$es"/>
 		<integer name="brdfSamples" value="$bs"/>
@@ -16,14 +16,19 @@
 			<integrator type="analyticDiffuse"/>
 		</integrator>
 	</integrator>
+	-->
 	
-	<!--
 	<integrator type="pathCv">
+		<boolean name="explicitConnect" value="$expConn"/>
+		<integer name="explicitSamples" value="$expSamp"/>
+		<boolean name="useApproxBrdf"   value="$usAppBr"/>
+		<boolean name="sampleApproxBrdf" value="$smAppBr"/>
+
 		<integrator type="ltc">
 			<integrator type="analyticDiffuse"/>
 		</integrator>
 	</integrator>
-	-->
+	
     <shape type="obj">
 		<string name="filename" value="luminaire.obj"/>
 		<transform name="toWorld">
@@ -202,7 +207,7 @@
 		<float name="fov" value="40"/>
 
 		<sampler type="ldsampler">
-			<integer name="sampleCount" value="1"/>
+			<integer name="sampleCount" value="$sc"/>
 			<integer name="dimension" value="1"/>
 		</sampler>
 
