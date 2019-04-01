@@ -9,7 +9,7 @@ public:
         m_explicitSamples = props.getSize("explicitSamples", 1);
         m_useApproxBrdf = props.getBoolean("useApproxBrdf", false);
         m_sampleApproxBrdf = props.getBoolean("sampleApproxBrdf", false);
-        
+
         Assert(!m_explicitConnect || (m_explicitConnect && m_explicitSamples > 0));
     }
 
@@ -314,10 +314,10 @@ if (m_explicitConnect) {
                     explicitPdf * m_fracExplicit) * m_weightImplicit;
 
                 accumulate += throughput * valueDirect * (m_useApproxBrdf ? brdfValApprox : brdfVal) * implicitMisWeight;
-
-                if (its.isEmitter())
-                    break;
             }
+
+            if (its.isEmitter())
+                break;
 /*
             
             
