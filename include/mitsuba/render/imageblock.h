@@ -191,8 +191,7 @@ public:
 
 				for (int x = min.x, xr = 0; x <= max.x; ++x, ++xr) {
 					for (int k = 0; k < channels; ++k) {
-						*dest = *dest > 0 ? *dest : 0;
-						*dest++;
+						*dest++ = *dest > 0 ? *dest : 0;
 					}
 				}
 			}
