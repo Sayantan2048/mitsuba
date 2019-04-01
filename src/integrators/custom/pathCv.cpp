@@ -334,6 +334,9 @@ if (m_explicitConnect) {
 				break;
            
             throughput /= (1 - terminationProbability);
+
+            if (m_explicitSamples > 1)
+                 rRec.sampler->request2DArray(m_explicitSamples);
            
             bounce++;
        }
