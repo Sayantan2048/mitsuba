@@ -164,7 +164,6 @@ public:
         Spectrum throughput(1.0f);
         Spectrum accumulate(0.0f);
         Float terminationProbability = 0.05f;
-        DirectSamplingRecord dRec(its);
         Point2 sample;
         Intersection hitLoc;
         int bounce = 0;
@@ -201,6 +200,8 @@ public:
 
             if (!(brdf->getType() & BSDF::ESmooth))
                 Log(EError, "Delta brdfs are not supported.");
+
+            DirectSamplingRecord dRec(its);
 
             // Emitter sampling
 if (m_explicitConnect) {            
@@ -269,7 +270,7 @@ if (m_explicitConnect) {
             Spectrum brdfValSampled = m_sampleApproxBrdf ? Analytic::sample(bRec, brdfPdf, sample, m, mInv, mInvDet, amplitude, specularReflectance, diffuseReflectance) :
                 brdf->sample(bRec, brdfPdf, sample); // brdfeval/pdf
             
-            if (brdfPdf <= Epsilon)
+            if (brdfValSampled.isZero() || brdfPdf < Epsilon)
                 break;
 
             // Set recursive ray
@@ -279,8 +280,6 @@ if (m_explicitConnect) {
             
             if (!rRec.rayIntersect(ray))
                 break;
-            
-            dRec = DirectSamplingRecord(its);
             
             //if (bounce > 0)
                 //accumulate += throughput * m_subIntegrator->Li(ray, rRec);
@@ -309,11 +308,10 @@ if (m_explicitConnect) {
                         }
                 }
 
-                Float explicitPdf = m_explicitConnect && dRec.object != NULL ? scene->pdfEmitterDirect(dRec) : 0;
+                Float explicitPdf = m_explicitConnect && dRec.object != NULL ? scene->pdfEmitterDirect(dRec): 0;
                 Float implicitMisWeight = miWeight(brdfPdf * m_fracImplicit,
                     explicitPdf * m_fracExplicit) * m_weightImplicit;
-
-                accumulate += throughput * valueDirect * (m_useApproxBrdf ? brdfValApprox : brdfVal) * implicitMisWeight;
+                accumulate += throughput * valueDirect * implicitMisWeight;
             }
 
             if (its.isEmitter())
@@ -329,10 +327,10 @@ if (m_explicitConnect) {
 */
 
             
-             // Russian Roulette path termination
-            if (rRec.nextSample1D() < terminationProbability)
-				break;
-           
+            // Russian Roulette path termination
+            if (rRec.nextSample1D() <= terminationProbability)
+                break;
+            
             throughput /= (1 - terminationProbability);
 
             if (m_explicitSamples > 1)
@@ -564,7 +562,7 @@ if (m_explicitConnect) {
     }
 
     inline Float miWeight(Float pdfA, Float pdfB) const {
-        //pdfA *= pdfA; pdfB *= pdfB;
+        pdfA *= pdfA; pdfB *= pdfB;
         return pdfA / (pdfA + pdfB);
     }
     
