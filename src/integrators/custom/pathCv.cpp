@@ -65,9 +65,6 @@ public:
 
     void configureSampler(const Scene *scene, Sampler *sampler) {
         SamplingIntegrator::configureSampler(scene, sampler);
-        
-        if (m_explicitSamples > 1)
-            sampler->request2DArray(m_explicitSamples);
     }
 
     void addChild(const std::string &name, ConfigurableObject *child) {
@@ -164,7 +161,6 @@ public:
         Spectrum throughput(1.0f);
         Spectrum accumulate(0.0f);
         Float terminationProbability = 0.05f;
-        Point2 sample;
         Intersection hitLoc;
         int bounce = 0;
 
@@ -205,16 +201,8 @@ public:
 
             // Emitter sampling
 if (m_explicitConnect) {            
-            Point2 *sampleArray;
-        
-            if (m_explicitSamples > 1) {
-                sampleArray = rRec.sampler->next2DArray(m_explicitSamples);
-            } else {
-                sample = rRec.nextSample2D(); sampleArray = &sample;
-            }
-
             for (size_t i=0; i < m_explicitSamples; ++i) {            
-                const Spectrum valueUnhinderedFirstHit = scene->sampleEmitterDirect(dRec, sampleArray[i], false);
+                const Spectrum valueUnhinderedFirstHit = scene->sampleEmitterDirect(dRec, rRec.nextSample2D(), false);
                 const Emitter *emitter = static_cast<const Emitter *>(dRec.object);
                 if (dRec.pdf >= Epsilon && // emitter is NULL when dRec.pdf is zero. 
                     emitter->isOnSurface() && // The next three condition essentially checks if the emitter is a mesh light.
@@ -261,14 +249,12 @@ if (m_explicitConnect) {
                 }
             }
 }
-            // Get a sample for recursive connection
-            sample = rRec.nextSample2D();
 
             // Brdf sampling    
             Float brdfPdf;
             BSDFSamplingRecord bRec(its, rRec.sampler, ERadiance);
-            Spectrum brdfValSampled = m_sampleApproxBrdf ? Analytic::sample(bRec, brdfPdf, sample, m, mInv, mInvDet, amplitude, specularReflectance, diffuseReflectance) :
-                brdf->sample(bRec, brdfPdf, sample); // brdfeval/pdf
+            Spectrum brdfValSampled = m_sampleApproxBrdf ? Analytic::sample(bRec, brdfPdf, rRec.nextSample2D(), m, mInv, mInvDet, amplitude, specularReflectance, diffuseReflectance) :
+                brdf->sample(bRec, brdfPdf, rRec.nextSample2D()); // brdfeval/pdf
             
             if (brdfValSampled.isZero() || brdfPdf < Epsilon)
                 break;
@@ -332,10 +318,7 @@ if (m_explicitConnect) {
                 break;
             
             throughput /= (1 - terminationProbability);
-
-            if (m_explicitSamples > 1)
-                 rRec.sampler->request2DArray(m_explicitSamples);
-           
+          
             bounce++;
        }
     
