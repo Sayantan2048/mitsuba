@@ -159,7 +159,9 @@ public:
              return its.Le(-ray.d);
 
         Spectrum throughput(1.0f);
+        Spectrum throughputLtc(1.0f);
         Spectrum accumulate(0.0f);
+        Spectrum accumulateLtc(0.0f);
         Float terminationProbability = 0.05f;
         Intersection hitLoc;
         int bounce = 0;
@@ -198,6 +200,8 @@ public:
                 Log(EError, "Delta brdfs are not supported.");
 
             DirectSamplingRecord dRec(its);
+
+            accumulateLtc += throughputLtc * m_subIntegrator->Li(ray, rRec);
 
             // Emitter sampling
 if (m_explicitConnect) {            
@@ -238,7 +242,7 @@ if (m_explicitConnect) {
                             brdfPdf *  m_fracImplicit) * m_weightExplicit;
 
                     accumulate += throughput * valueUnhinderedFirstHit * notInShadow * (m_useApproxBrdf ? brdfValApprox : brdfVal) * explicitMisWeight;
-
+                    accumulateLtc -= throughputLtc * valueUnhinderedAll * brdfValApprox * explicitMisWeight;
                     /*
                     if (bounce > 0)
                         accumulate += -throughput * valueUnhinderedAll * brdfValApprox * explicitMisWeight;
@@ -274,6 +278,7 @@ if (m_explicitConnect) {
             const Spectrum brdfValApprox = m_sampleApproxBrdf ? brdfValSampled : Analytic::approxBrdfEval(bRec, mInv, mInvDet, amplitude, specularReflectance, diffuseReflectance) / brdfPdf;
 
             throughput *= (m_useApproxBrdf ? brdfValApprox : brdfVal);
+            throughputLtc *= brdfValApprox;
 
             Spectrum valueUnhinderedAll(0.0f);
             // Note that this intersection with the light source is with shadowRay(same as recursive ray), so do not put the intersection before setting recursive ray.
@@ -298,6 +303,8 @@ if (m_explicitConnect) {
                 Float implicitMisWeight = miWeight(brdfPdf * m_fracImplicit,
                     explicitPdf * m_fracExplicit) * m_weightImplicit;
                 accumulate += throughput * valueDirect * implicitMisWeight;
+                accumulateLtc -= throughputLtc * valueUnhinderedAll * implicitMisWeight;
+
             }
 
             if (its.isEmitter())
@@ -312,13 +319,13 @@ if (m_explicitConnect) {
                 rRec.stochasticLtc += valueUnhinderedAll * brdfValApprox * implicitMisWeight;
 */
 
-            
             // Russian Roulette path termination
             if (rRec.nextSample1D() <= terminationProbability)
                 break;
             
             throughput /= (1 - terminationProbability);
-          
+            throughputLtc /= (1 - terminationProbability);
+
             bounce++;
        }
     
