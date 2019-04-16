@@ -265,7 +265,8 @@ class DirectCvIntegrator : public SamplingIntegrator {
             Float approxBrdfPdf;
 
             BSDFSamplingRecord bRec(its, rRec.sampler, ERadiance);
-            Spectrum brdfValApprox = Analytic::sample(bRec, approxBrdfPdf, sampleArray[i], m, mInv, mInvDet, amplitude, specularReflectance, diffuseReflectance);
+            Spectrum brdfValApprox = Analytic::sample(bRec, approxBrdfPdf, sampleArray[i], m, mInv, mInvDet, amplitude, 
+                specularReflectance, specularReflectance.getLuminance(), diffuseReflectance, diffuseReflectance.getLuminance());
 
             if (approxBrdfPdf > 0) {
                 const Vector wo = its.toWorld(bRec.wo);

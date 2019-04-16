@@ -319,6 +319,23 @@ public:
 	Spectrum directLtc;
 	Spectrum stochasticLtc;
 	Float notInShadow;
+
+	Float *triEmitterAreaList; // A buffer for storing list of surface area for triEmitters!
+	Float *triEmitterAreaLumList; // A buffer for storing list of surface area times radiance for triEmitters in space!
+	Vector *triEmitterSurfaceNormalBuffer; // A buffer for storing list of surface normals for triEmitters in brdf space!
+	Vector *triEmitterVertexBuffer; // A buffer for storing list of vertices for triEmitters in brdf space!
+	Spectrum *triEmitterRadianceBuffer; // A buffer for storing list of vertices for triEmitters in brdf space!
+	Float areaNormDiffuse; // Sum of areas of emitter for diffuse component
+	Float areaNormLumDiffuse; // Sum of area * radiance for diffuse component
+	Float areaNormSpecular; // Sum of areas of emitter for specular component
+	Float areaNormLumSpecular; // Sum of area * radiance for specular component
+	Float omegaDiffuse; // An approximation of solid angle subtended by light source in local space
+	Float omegaSpecular; // An approximation of solid angle subtended by light source in brdf space
+		
+	Spectrum *emitterSampleValues; // store list of sampled surface radiance values scaled by pdf
+	Vector *emitterSampleDirections; // store list of emitter samples for triEmitters in world space!
+	Float *emitterPdf; // Pdf corresponding to each sample in SolidAngleMeasure
+	size_t *emitterIndices; // List of emitters sampled.
 };
 
 /** \brief Abstract base class, which describes integrators

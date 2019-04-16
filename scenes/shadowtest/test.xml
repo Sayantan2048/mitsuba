@@ -17,11 +17,13 @@
 		</integrator>
 	</integrator>
 	-->
+	
 	<!--
 	<integrator type="path">
 	</integrator>
 	-->
 	
+	<!--
 	<integrator type="pathCv">
 		<boolean name="explicitConnect" value="$expConn"/>
 		<integer name="explicitSamples" value="$expSamp"/>
@@ -32,13 +34,19 @@
 			<integrator type="analyticDiffuse"/>
 		</integrator>
 	</integrator>
+	-->
+	
+	<integrator type="pathCv_v2">
+		<boolean name="explicitConnect" value="$expConn"/>
+		<integer name="explicitSamples" value="$expSamp"/>
+	</integrator>
 	
 	<!--
 	<integrator type="ltc">
 		<integrator type="analyticDiffuse"/>
 	</integrator>
 	-->
-
+	
     <shape type="obj">
 		<string name="filename" value="luminaire.obj"/>
 		<transform name="toWorld">
@@ -72,7 +80,7 @@
 			<rgb name="reflectance" value="0 0 0"/>
 		</bsdf>
 	</shape>
-
+		
 	<shape type="obj">
 		<string name="filename" value="luminaire.obj"/>
 		<transform name="toWorld">
@@ -89,8 +97,8 @@
 			<rgb name="reflectance" value="0 0 0"/>
 		</bsdf>
 	</shape>
-
-    <shape type="obj">
+	
+	<shape type="obj">
 		<string name="filename" value="luminaire.obj"/>
 		<transform name="toWorld">
             
@@ -133,6 +141,7 @@
 		</bsdf>
     </shape>
 	-->
+
     <shape type="obj">
 		<string name="filename" value="luminaire.obj"/>
 		<transform name="toWorld">
@@ -149,7 +158,8 @@
 			<rgb name="reflectance" value="0 0 0"/>
 		</bsdf>
 	</shape>
-   
+
+
      <shape type="obj">
 		<string name="filename" value="luminaire.obj"/>
 		<transform name="toWorld">
@@ -168,6 +178,7 @@
 			<rgb name="reflectance" value="0 0 0"/>
 		</bsdf>
 	</shape>
+
 	<!--
       <shape type="sphere">
         <transform name="toWorld">
@@ -190,8 +201,6 @@
 		</bsdf>
     </shape>
 	-->
-
-
 	<shape type="obj">
 		<string name="filename" value="floor.obj"/>
 
