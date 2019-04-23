@@ -17,7 +17,7 @@
 		</integrator>
 	</integrator>
 	-->
-	
+		
 	<!--
 	<integrator type="path">
 	</integrator>
@@ -45,8 +45,7 @@
 	<integrator type="ltc">
 		<integrator type="analyticDiffuse"/>
 	</integrator>
-	-->
-	
+	-->	
     <shape type="obj">
 		<string name="filename" value="luminaire.obj"/>
 		<transform name="toWorld">
@@ -118,8 +117,7 @@
 		</bsdf>
 	</shape>
 
-	<!--
-    <shape type="cube">
+	<shape type="cube">
         <transform name="toWorld">
             <scale value="1.5"/>
             <rotate  x="0.0" y="1" z="0" angle="45"/>
@@ -140,8 +138,7 @@
 			</bsdf>
 		</bsdf>
     </shape>
-	-->
-
+	
     <shape type="obj">
 		<string name="filename" value="luminaire.obj"/>
 		<transform name="toWorld">
@@ -159,8 +156,7 @@
 		</bsdf>
 	</shape>
 
-
-     <shape type="obj">
+    <shape type="obj">
 		<string name="filename" value="luminaire.obj"/>
 		<transform name="toWorld">
             <translate x="4.5" y="-2.5" z="3"/>
@@ -179,8 +175,7 @@
 		</bsdf>
 	</shape>
 
-	<!--
-      <shape type="sphere">
+	<shape type="sphere">
         <transform name="toWorld">
             <scale value="1.5"/>
             <translate x="3.5" y="-2.5" z="3"/>
@@ -200,7 +195,7 @@
 			</bsdf>
 		</bsdf>
     </shape>
-	-->
+	
 	<shape type="obj">
 		<string name="filename" value="floor.obj"/>
 

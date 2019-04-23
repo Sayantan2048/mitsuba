@@ -110,6 +110,7 @@ void Shape::sampleDirect(DirectSamplingRecord &dRec,
     dRec.dist = std::sqrt(distSquared);
     dRec.d /= dRec.dist;
     Float dp = absDot(dRec.d, dRec.n);
+	//Log(EInfo, "%f %f %f", dp, dRec.pdf, dRec.dist);
     dRec.pdf *= dp != 0 ? (distSquared / dp) : 0.0f;
     dRec.measure = ESolidAngle;
 }

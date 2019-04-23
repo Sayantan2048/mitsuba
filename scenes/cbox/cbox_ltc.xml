@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<scene version="0.6.0">
+	<!--
+	<integrator type="ltc">
+		<integrator type="analyticDiffuse"/>
+	</integrator>
+	-->
+	<!--
+	<integrator type="path"/>
+	-->
+	<integrator type="pathCv_v2">
+		<boolean name="explicitConnect" value="$expConn"/>
+		<integer name="explicitSamples" value="$expSamp"/>
+		<boolean name="collectAll" value="$collectAll"/>
+		<integer name="whichBounce" value="$whichBounce"/>
+	</integrator>
+	
+
+	<sensor type="perspective">
+		<string name="fovAxis" value="smaller"/>
+		<float name="nearClip" value="10"/>
+		<float name="farClip" value="2800"/>
+		<float name="focusDistance" value="1000"/>
+		<transform name="toWorld">
+			<lookAt origin="278, 273, -800" target="278, 273, -799" up="0, 1, 0"/>
+		</transform>
+		<float name="fov" value="39.3077"/>
+
+		<sampler type="ldsampler">
+			<integer name="sampleCount" value="$sc"/>
+		</sampler>
+
+		<film type="hdrfilm">
+			<integer name="width" value="900"/>
+			<integer name="height" value="900"/>
+			<boolean name="banner" value="false"/>
+			<rfilter type="box"/>
+			
+		</film>
+	</sensor>
+
+	<bsdf type="approxmicrofacet" id="box">
+		<string name="distribution" value="ggx"/>
+		<rgb name="diffuseReflectance" value="0.4 0.4 0.4"/>
+		<spectrum name="specularReflectance" value="1"/>
+		<float name="alpha" value="$alpha"/>
+
+		<bsdf type="simplemicrofacet">
+			<string name="distribution" value="ggx"/>
+			<rgb name="diffuseReflectance" value="0.4 0.4 0.4"/>
+			<spectrum name="specularReflectance" value="1"/>
+			<float name="alpha" value="$alpha"/>
+		</bsdf>
+	</bsdf>
+
+	<bsdf type="approxmicrofacet" id="white">
+		<string name="distribution" value="ggx"/>
+		<rgb name="diffuseReflectance" value="0.4 0.4 0.4"/>
+		<spectrum name="specularReflectance" value="1"/>
+		<float name="alpha" value="$alpha"/>
+
+		<bsdf type="simplemicrofacet">
+			<string name="distribution" value="ggx"/>
+			<rgb name="diffuseReflectance" value="0.4 0.4 0.4"/>
+			<spectrum name="specularReflectance" value="1"/>
+			<float name="alpha" value="$alpha"/>
+		</bsdf>
+	</bsdf>
+
+	<bsdf type="approxmicrofacet" id="red">
+		<string name="distribution" value="ggx"/>
+		<rgb name="diffuseReflectance" value="0.6 0.1 0.1"/>
+		<spectrum name="specularReflectance" value="1"/>
+		<float name="alpha" value="$alpha"/>
+
+		<bsdf type="simplemicrofacet">
+			<string name="distribution" value="ggx"/>
+			<rgb name="diffuseReflectance" value="0.6 0.1 0.1"/>
+			<spectrum name="specularReflectance" value="1"/>
+			<float name="alpha" value="$alpha"/>
+		</bsdf>
+	</bsdf>
+
+	<bsdf type="approxmicrofacet" id="green">
+		<string name="distribution" value="ggx"/>
+		<rgb name="diffuseReflectance" value="0.1 0.6 0.1"/>
+		<spectrum name="specularReflectance" value="1"/>
+		<float name="alpha" value="$alpha"/>
+
+		<bsdf type="simplemicrofacet">
+			<string name="distribution" value="ggx"/>
+			<rgb name="diffuseReflectance" value="0.1 0.6 0.1"/>
+			<spectrum name="specularReflectance" value="1"/>
+			<float name="alpha" value="$alpha"/>
+		</bsdf>
+	</bsdf>
+
+	<bsdf type="diffuse" id="light">
+		<rgb name="reflectance" value="0 0 0"/>
+	</bsdf>
+
+	<shape type="obj">
+		<string name="filename" value="meshes/cbox_luminaire.obj"/>
+		<transform name="toWorld">
+			<translate x="0" y="-2" z="0"/>
+		</transform>
+
+		<ref id="light"/>
+
+		<emitter type="area">
+			<spectrum name="radiance" value="400:0, 500:8, 600:15.6, 700:18.4"/>
+		</emitter>
+	</shape>
+
+	<shape type="obj">
+		<string name="filename" value="meshes/cbox_floor.obj"/>
+
+		<ref id="white"/>
+	</shape>
+
+	<shape type="obj">
+		<string name="filename" value="meshes/cbox_ceiling.obj"/>
+
+		<ref id="white"/>
+	</shape>
+
+	<shape type="obj">
+		<string name="filename" value="meshes/cbox_back.obj"/>
+
+		<ref id="white"/>
+	</shape>
+
+
+	<shape type="obj">
+		<string name="filename" value="meshes/cbox_greenwall.obj"/>
+
+		<ref id="green"/>
+	</shape>
+
+	
+	<shape type="obj">
+		<string name="filename" value="meshes/cbox_redwall.obj"/>
+
+		<ref id="red"/>
+	</shape>
+	
+	<!--
+	<shape type="obj">
+		<string name="filename" value="meshes/cbox_smallbox.obj"/>
+
+		<ref id="box"/>
+	</shape>
+	-->
+	<shape type="obj">
+		<string name="filename" value="meshes/cbox_largebox.obj"/>
+
+		<ref id="box"/>
+	</shape>
+</scene>

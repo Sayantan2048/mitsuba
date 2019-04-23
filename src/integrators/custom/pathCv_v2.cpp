@@ -6,6 +6,8 @@ class PathCv_v2 : public SamplingIntegrator {
 public:
     PathCv_v2(const Properties &props) : SamplingIntegrator(props) {
         m_explicitConnect = props.getBoolean("explicitConnect", true); // Request a non-recursive ray
+        m_collectAll = props.getBoolean("collectAll", true);
+        m_whichBounce = props.getSize("whichBounce", 0);
         m_explicitSamples = props.getSize("explicitSamples", 1);
         m_emitterSamples = m_explicitSamples;
         Assert(!m_explicitConnect || (m_explicitConnect && m_explicitSamples > 0));
@@ -249,7 +251,8 @@ public:
 
             DirectSamplingRecord dRec(its);
             
-            accumulateLtc += throughputLtc * Analytic::ltcIntegrate(scene, its.p, rotMat, mInv, mInvDet, amplitude, specularReflectance, diffuseReflectance);
+            if (m_collectAll || bounce == m_whichBounce)
+                accumulateLtc += throughputLtc * Analytic::ltcIntegrate(scene, its.p, rotMat, mInv, mInvDet, amplitude, specularReflectance, diffuseReflectance);
 
             // Emitter sampling
 if (m_explicitConnect) {            
@@ -288,8 +291,10 @@ if (m_explicitConnect) {
                     const Float explicitMisWeight = miWeight(dRec.pdf * m_fracExplicit,
                             brdfPdf *  m_fracImplicit) * m_weightExplicit;
                     
-                    accumulate += throughput * valueUnhinderedFirstHit * notInShadow * brdfVal * explicitMisWeight;
-                    accumulateLtc -= throughputLtc * valueUnhinderedAll * brdfVal * explicitMisWeight;
+                    if ( m_collectAll || bounce == m_whichBounce) {
+                        accumulate += throughput * valueUnhinderedFirstHit * notInShadow * brdfVal * explicitMisWeight;
+                        accumulateLtc -= throughputLtc * valueUnhinderedAll * brdfVal * explicitMisWeight;
+                    }
                     /*
                     if (bounce > 0)
                         accumulate += -throughput * valueUnhinderedAll * brdfValApprox * explicitMisWeight;
@@ -345,9 +350,10 @@ if (m_explicitConnect) {
                 Float explicitPdf = m_explicitConnect && dRec.object != NULL ? scene->pdfEmitterDirect(dRec): 0;
                 Float implicitMisWeight = miWeight(brdfPdf * m_fracImplicit,
                     explicitPdf * m_fracExplicit) * m_weightImplicit;
-                accumulate += throughput * valueDirect * implicitMisWeight;
-                accumulateLtc -= throughputLtc * valueUnhinderedAll * implicitMisWeight;
-
+                if (m_collectAll || bounce == m_whichBounce) {
+                    accumulate += throughput * valueDirect * implicitMisWeight;
+                    accumulateLtc -= throughputLtc * valueUnhinderedAll * implicitMisWeight;
+                }
             }
 
             if (its.isEmitter())
@@ -438,12 +444,14 @@ if (m_explicitConnect) {
                 Log(EError, "Delta brdfs are not supported.");
 
             DirectSamplingRecord dRec(its);
-            
-            //accumulateLtc += throughputLtc * 
-                Analytic::ltcIntegrateAndSample(scene, its.p, rotMat, mInv, mInvDet, amplitude, specularReflectance, diffuseReflectance, 
+            Spectrum ltcEval = Analytic::ltcIntegrateAndSample(scene, its.p, rotMat, mInv, mInvDet, amplitude, specularReflectance, diffuseReflectance, 
                 m_triEmitters, rRec.triEmitterAreaList, rRec.triEmitterAreaLumList, rRec.areaNormSpecular, rRec.areaNormLumSpecular, rRec.omegaSpecular, 
                 rRec.areaNormDiffuse, rRec.areaNormLumDiffuse, rRec.omegaDiffuse,
                 rRec.triEmitterSurfaceNormalBuffer, rRec.triEmitterVertexBuffer, rRec.triEmitterRadianceBuffer);
+            
+            if (m_collectAll || bounce == m_whichBounce)
+                accumulateLtc += throughputLtc * ltcEval;
+               
 
             // Emitter sampling
 if (m_explicitConnect) {
@@ -487,9 +495,11 @@ if (m_explicitConnect) {
                     //if (std::abs(rRec.emitterSampleValues[i].getLuminance() - valueUnhinderedAll.getLuminance()) > Epsilon)
                         //Log(EInfo, "%f %f", rRec.emitterSampleValues[i].getLuminance(), valueUnhinderedAll.getLuminance());
                     
-                    accumulate += throughput * rRec.emitterSampleValues[i] * brdfVal * notInShadow * explicitMisWeight;
-                    accumulateLtc -= throughputLtc * valueUnhinderedAll * brdfVal * explicitMisWeight;
-                  
+                    //Log(EInfo, "%f %f", rRec.emitterPdf[i], rRec.emitterSampleValues[i].getLuminance());
+                    if (m_collectAll || bounce == m_whichBounce) {
+                        accumulate += throughput * rRec.emitterSampleValues[i] * brdfVal * notInShadow * explicitMisWeight;
+                        accumulateLtc -= throughputLtc * valueUnhinderedAll * brdfVal * explicitMisWeight;
+                    }
                     /*
                     if (bounce > 0)
                         accumulate += -throughput * valueUnhinderedAll * brdfValApprox * explicitMisWeight;
@@ -547,8 +557,10 @@ if (m_explicitConnect) {
                 Float implicitMisWeight = miWeight(brdfPdf * m_fracImplicit,
                     explicitPdf * m_fracExplicit) * m_weightImplicit;
                 
-                accumulate += throughput * valueDirect * implicitMisWeight;
-                accumulateLtc -= throughputLtc * valueUnhinderedAll * implicitMisWeight;
+                if (m_collectAll || bounce == m_whichBounce) {
+                    accumulate += throughput * valueDirect * implicitMisWeight;
+                    accumulateLtc -= throughputLtc * valueUnhinderedAll * implicitMisWeight;
+                }
             }
             
             if (its.isEmitter())
@@ -577,6 +589,174 @@ if (m_explicitConnect) {
         return accumulate;
     }
 #endif
+
+#if 0 //Standard explicit path tracing with n bounces of explicit sample and one recursive sample using approx brdf as ltc and evaluation.
+    Spectrum Li(const RayDifferential &r, RadianceQueryRecord &rRec) const {
+        /* Some aliases and local variables */
+        const Scene *scene = rRec.scene;
+        Intersection &its = rRec.its;
+        RayDifferential ray(r);
+
+        // return immediately if the camera ray doesn't intersect the scene
+        if (!rRec.rayIntersect(ray))
+            return Spectrum(0.0f);
+
+        // return Le if camera ray intersects a light source
+         if (its.isEmitter() && (rRec.type & RadianceQueryRecord::EEmittedRadiance))
+             return its.Le(-ray.d);
+
+        Spectrum throughput(1.0f);
+        Spectrum throughputLtc(1.0f);
+        Spectrum accumulate(0.0f);
+        Spectrum accumulateLtc(0.0f);
+        Float terminationProbability = 0.05f;
+        Intersection hitLoc;
+        int bounce = 0;
+        size_t nEmitterSamples = m_explicitSamples;
+
+        while(true) {
+            // Do some setup
+            Matrix3x3 rotMat;
+            Float cosThetaIncident;
+            Analytic::getRotMat(its, -ray.d, cosThetaIncident, rotMat);
+
+            if (cosThetaIncident < 0)
+                break;
+    
+            Float thetaIncident = std::acos(cosThetaIncident);
+            Float amplitude;
+            Matrix3x3 mInv;
+
+            const BSDF *brdf = its.getBSDF(ray);
+            brdf->transform(its, thetaIncident, mInv, amplitude);
+            const Spectrum specularReflectance = brdf->getSpecularReflectance(its);
+            const Float specularLum = specularReflectance.getLuminance();
+            const Spectrum diffuseReflectance = brdf->getDiffuseReflectance(its);
+            const Float diffuseLum = diffuseReflectance.getLuminance();
+            Float mInvDet = mInv.det();
+            Matrix3x3 m(0.0f);
+
+            // No point in proceeding furthur if cannot sample implicit ray according to approx-brdf.
+            if (!mInv.invert(m))
+                break;
+            
+            // Probably one might want to change its.shFrame to rotMat. Be careful, one must change all the local frame vectors to the new frame before setting the its.shFrame.
+            its.wi = rotMat * its.toWorld(its.wi);
+            its.shFrame.s = rotMat.row(0);
+            its.shFrame.t = rotMat.row(1);
+            its.shFrame.n = Normal(rotMat.row(2));
+
+            if (!(brdf->getType() & BSDF::ESmooth))
+                Log(EError, "Delta brdfs are not supported.");
+
+            DirectSamplingRecord dRec(its);
+            
+            accumulateLtc += throughputLtc * Analytic::ltcIntegrate(scene, its.p, rotMat, mInv, mInvDet, amplitude, specularReflectance, diffuseReflectance);
+
+            // Brdf sampling
+if (m_explicitConnect) {            
+            for (size_t i=0; i < m_explicitSamples; ++i) {
+                Float brdfPdf;
+                BSDFSamplingRecord bRec(its, rRec.sampler, ERadiance);
+                Spectrum brdfValSampled = Analytic::sample(bRec, brdfPdf, rRec.nextSample2D(), m, mInv, mInvDet, amplitude, specularReflectance, specularLum, diffuseReflectance, diffuseLum); // brdfeval/pdf            
+                if (brdfValSampled.isZero() || brdfPdf < Epsilon)
+                    continue;
+                
+                Ray shadowRay(its.p, its.toWorld(bRec.wo) , ray.time);
+                Spectrum valueUnhinderedAll(0.0f);
+                intersectEmitter(scene, shadowRay, valueUnhinderedAll);
+
+                if (valueUnhinderedAll.isZero())
+                    continue;
+                
+                Spectrum valueDirect(0.0f);
+                if (scene->rayIntersect(shadowRay, hitLoc) && hitLoc.isEmitter()) {
+                    const Emitter *tempEmitter = hitLoc.shape->getEmitter();
+                    
+                    if (tempEmitter != NULL &&
+                        tempEmitter->isOnSurface() && // The next three condition essentially checks if the emitter is a mesh light.
+                        tempEmitter->getShape() != NULL && 
+                        typeid(*(tempEmitter->getShape())) == typeid(TriMesh))
+                            // If the shadowRay hits a light source
+                            valueDirect = hitLoc.Le(-shadowRay.d);    
+                }
+
+                accumulate += throughput * valueDirect * brdfValSampled * m_fracExplicit;
+
+            }
+}
+
+            // Brdf sampling    
+            Float brdfPdf;
+            BSDFSamplingRecord bRec(its, rRec.sampler, ERadiance);
+            Spectrum brdfValSampled = Analytic::sample(bRec, brdfPdf, rRec.nextSample2D(), m, mInv, mInvDet, amplitude, specularReflectance, specularLum, diffuseReflectance, diffuseLum); // brdfeval/pdf
+            
+            if (brdfValSampled.isZero() || brdfPdf < Epsilon)
+                break;
+
+            // Set recursive ray
+            ray = Ray(its.p, its.toWorld(bRec.wo) , ray.time);
+            if (!(rRec.type & RadianceQueryRecord::EIntersection))
+                rRec.type ^= RadianceQueryRecord::EIntersection;
+            
+            if (!rRec.rayIntersect(ray))
+                break;
+            
+            //if (bounce > 0)
+                //accumulate += throughput * m_subIntegrator->Li(ray, rRec);
+
+            throughput *= brdfValSampled;
+            throughputLtc *= brdfValSampled;
+
+            Spectrum valueUnhinderedAll(0.0f);
+            // Note that this intersection with the light source is with shadowRay(same as recursive ray), so do not put the intersection before setting recursive ray.
+            intersectEmitter(scene, ray, dRec, valueUnhinderedAll);
+
+            if (!valueUnhinderedAll.isZero()) {
+                Spectrum valueDirect(0.0f);
+                if (its.isEmitter()) {
+                    const Emitter *tempEmitter = its.shape->getEmitter();
+                    
+                    if (tempEmitter != NULL &&
+                        tempEmitter->isOnSurface() && // The next three condition essentially checks if the emitter is a mesh light.
+                        tempEmitter->getShape() != NULL && 
+                        typeid(*(tempEmitter->getShape())) == typeid(TriMesh)) {
+                            // If the shadowRay hits a light source
+                            valueDirect = its.Le(-ray.d);
+                            dRec.setQuery(ray, its);
+                        }
+                }
+
+                accumulate += throughput * valueDirect * m_fracImplicit;
+                accumulateLtc -= throughputLtc * valueUnhinderedAll * m_fracImplicit;
+
+            }
+
+            if (its.isEmitter())
+                break;
+/*
+            
+            
+
+            if (bounce > 0)
+                accumulate += -throughput * (valueUnhinderedAll * brdfValApprox * implicitMisWeight);
+            else
+                rRec.stochasticLtc += valueUnhinderedAll * brdfValApprox * implicitMisWeight;
+*/
+
+            // Russian Roulette path termination
+            if (rRec.nextSample1D() <= terminationProbability)
+                break;
+            
+            throughput /= (1 - terminationProbability);
+            throughputLtc /= (1 - terminationProbability);
+
+            bounce++;
+       }
+       return accumulate;
+    }
+#endif
+    
     Spectrum intersectEmitter(const Scene *scene, const Ray &shadowRay, DirectSamplingRecord &dRec, Spectrum &LiAllHit) const {
         Float distance = sceneSize;
         Intersection its;
@@ -675,6 +855,8 @@ if (m_explicitConnect) {
     MTS_DECLARE_CLASS()
 private:
     bool m_explicitConnect;
+    bool m_collectAll;
+    size_t m_whichBounce;
     size_t m_explicitSamples, m_emitterSamples;
     Float m_fracExplicit, m_fracImplicit;
     Float m_weightExplicit, m_weightImplicit;

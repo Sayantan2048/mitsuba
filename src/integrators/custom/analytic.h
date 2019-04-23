@@ -76,6 +76,7 @@ public:
         // If all vertices on the light source are visible from shade point
         if (a.z >= 0 && b.z >= 0 && c.z >= 0) {
             area = 0.5f * nEmitterLength;
+           
             Vector e0 = normalize(a);
             Vector e1 = normalize(b);
             Vector e2 = normalize(c);
@@ -118,12 +119,11 @@ public:
         Float result = 0.0f;
         Vector temp(0.0f);
         for (int i = 0; i < index; i++) {
-            temp += cross(quad[i], quadProj[(i+1)%index]);
+            temp += cross(quad[i], quad[(i+1)%index]);
             result += integrateEdge(quadProj[i], quadProj[(i+1)%index]);
         }
-
         area = 0.5f * std::abs(dot(nEmitter, temp));
-
+        
         return result;
     }
         
@@ -412,9 +412,9 @@ public:
         RadianceQueryRecord &rRec, 
         size_t nSamples, Spectrum *emitterSampleValues, Vector *emitterSampleDirections, Float *emitterPdf, size_t *emitterIndices) {
         
-        Float probSpecularLum = specularLum  / (specularLum + diffuseLum);
-        Float probSpecularOmega = omegaSpecular / (omegaSpecular + omegaDiffuse);
-        Float probSpecular = probSpecularLum  * probSpecularOmega * (cosThetaIncident > SPECULAR_CONTROL ? 1 : std::pow(cosThetaIncident, 3)); 
+        Float probSpecularLum = specularLum  / (specularLum + diffuseLum); // reflectance heuristic
+        Float probSpecularOmega = omegaSpecular / (omegaSpecular + omegaDiffuse); // area heuristic
+        Float probSpecular = probSpecularLum * probSpecularOmega * (cosThetaIncident > SPECULAR_CONTROL ? 1 : std::pow(cosThetaIncident, 3)); 
         //SLog(EInfo, "%f %f %f", areaNormSpecularNormalized, areaNormDiffuse, mInvDet);
      
         for (int i = 0; i < nSamples; i++) {
@@ -499,6 +499,7 @@ public:
             }
             
             emitterPdf[i] = pdfDiffuse + pdfSpecular;
+            
             emitterSampleValues[i] = emitterPdf[i] <= Epsilon ? Spectrum(0.0f) : sampledRadiance / emitterPdf[i];
         }
     }
@@ -511,7 +512,7 @@ public:
 
         Float probSpecularLum = specularLum  / (specularLum + diffuseLum);
         Float probSpecularOmega = omegaSpecular / (omegaSpecular + omegaDiffuse);
-        Float probSpecular = probSpecularLum  * probSpecularOmega * (cosThetaIncident > SPECULAR_CONTROL ? 1 : std::pow(cosThetaIncident, 3)); 
+        Float probSpecular = probSpecularLum * probSpecularOmega * (cosThetaIncident > SPECULAR_CONTROL ? 1 : std::pow(cosThetaIncident, 3)); 
 
         Float pdfSpecular = 0, pdfDiffuse = 0;
         if (areaNormSpecular > Epsilon) {
@@ -537,7 +538,7 @@ private:
 			e2 * samplex * (1.0f - sample.y);
 
     }
-#define SAMPLE_LIGHT_AREA 2    // 0 - use surface area to select a light source, 1 - use surface area x radiance to select light source, 2 - radmoly pick a light source with uniform probability.
+#define SAMPLE_LIGHT_AREA 1    // 0 - use surface area to select a light source, 1 - use surface area x radiance to select light source, 2 - radmoly pick a light source with uniform probability.
     // Note the direction must be in the same domain as the emitter vertices
     static Float calcEmitterPdf(const Vector &direction, const size_t nTriEmitters, const size_t offset, 
         const Float areaNormalization, const Float areaLumNormalization, const Float *triEmitterAreaBuffer, const Float *triEmitterAreaLumBuffer, const Vector *triEmitterNormalBuffer, const Vector *triEmitterVertexBuffer) {
@@ -571,8 +572,9 @@ private:
         Float omega = triEmitterAreaBuffer[offset + slectedEmitter] * areaLumNormalization * std::abs(cosineFactor) / (t * t * triEmitterAreaLumBuffer[offset + slectedEmitter]);
 #else
         Float omega = triEmitterAreaBuffer[offset + slectedEmitter] * nTriEmitters * std::abs(cosineFactor) / (t * t);
-#endif        
-        return omega > Epsilon ? 1 / omega : 0;
+#endif  
+         
+        return omega > Epsilon ? 1 / omega : 1 / Epsilon;
     }
 
     static void sampleEmitter(const size_t nTriEmitters, const size_t offset, const Float areaNormalization, const Float areaLumNormalization, const Float *triEmitterAreaBuffer, const Float *triEmitterAreaLumBuffer, const Vector *triEmitterVertexBuffer, const Vector *triEmitterNormalBuffer, const Spectrum *triEmitterRadianceBuffer,
@@ -623,8 +625,9 @@ private:
             Float omega = triEmitterAreaBuffer[offset + slectedEmitter] * areaLumNormalization * std::abs(cosineFactor) / (length * length * triEmitterAreaLumBuffer[offset + slectedEmitter]);
 #else
             Float omega = triEmitterAreaBuffer[offset + slectedEmitter] * nTriEmitters * std::abs(cosineFactor) / (length * length);
-#endif
-            sampledPdf =  omega > Epsilon ? 1 / omega : 0;
+#endif      
+           
+            sampledPdf =  omega > Epsilon ? 1 / omega : 1 / Epsilon;
             emitterIndex = slectedEmitter;
         }
     }
