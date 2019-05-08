@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <scene version="0.6.0">
-	<integrator type="ltc">
-		<integrator type="analyticDiffuse"/>
+	<integrator type="path">
 	</integrator>
 	<sensor type="perspective">
 		<string name="fovAxis" value="smaller"/>
@@ -15,15 +14,13 @@
 		<float name="fov" value="39.3077"/>
 
 		<sampler type="ldsampler">
-			<integer name="sampleCount" value="64"/>
+			<integer name="sampleCount" value="2"/>
 		</sampler>
 
 		<film type="hdrfilm">
-			<integer name="width" value="512"/>
-			<integer name="height" value="512"/>
-			<!--
-			<rfilter type="gaussian"/>
-			-->
+			<integer name="width" value="1024"/>
+			<integer name="height" value="1024"/>
+			<rfilter type="box"/>
 		</film>
 	</sensor>
 
@@ -50,7 +47,7 @@
 	<shape type="obj">
 		<string name="filename" value="meshes/cbox_luminaire.obj"/>
 		<transform name="toWorld">
-			<translate x="0" y="-100.5" z="0"/>
+			<translate x="0" y="-0.5" z="0"/>
 		</transform>
 
 		<ref id="light"/>
@@ -89,13 +86,11 @@
 
 		<ref id="red"/>
 	</shape>
-	<!--
 	<shape type="obj">
 		<string name="filename" value="meshes/cbox_smallbox.obj"/>
 
 		<ref id="box"/>
 	</shape>
-	-->
 	<shape type="obj">
 		<string name="filename" value="meshes/cbox_largebox.obj"/>
 

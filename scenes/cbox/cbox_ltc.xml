@@ -9,13 +9,14 @@
 	<!--
 	<integrator type="path"/>
 	-->
+	<!--
 	<integrator type="pathCv_v2">
 		<boolean name="explicitConnect" value="$expConn"/>
 		<integer name="explicitSamples" value="$expSamp"/>
 		<boolean name="collectAll" value="$collectAll"/>
 		<integer name="whichBounce" value="$whichBounce"/>
 	</integrator>
-	
+	-->
 
 	<sensor type="perspective">
 		<string name="fovAxis" value="smaller"/>

@@ -2,6 +2,10 @@
 #include "analytic.h"
 MTS_NAMESPACE_BEGIN
 
+// The v2 version only uses approx-brdf and approx-brdf sampling.
+// There are three #if's, first #if is vanilla explicit path tracing, second #if uses emitter-brdf joint sampling as explicit connection, last #if uses brdf-sampling as explicit connection.
+// The inner #if is to switch between control variate and ratio estimator. 
+
 class PathCv_v2 : public SamplingIntegrator {
 public:
     PathCv_v2(const Properties &props) : SamplingIntegrator(props) {
@@ -107,13 +111,12 @@ public:
         rRec.triEmitterVertexBuffer = new Vector[2 * m_triEmitters * 3];
         rRec.triEmitterRadianceBuffer = new Spectrum[m_triEmitters];
         
-
         rRec.emitterSampleValues = new Spectrum[m_emitterSamples];
         rRec.emitterSampleDirections = new Vector[m_emitterSamples];
         rRec.emitterPdf = new Float[m_emitterSamples];
         rRec.emitterIndices = new size_t[m_emitterSamples];
 
-        for (int i = 0; i < m_triEmitters; i++) {
+        for (size_t i = 0; i < m_triEmitters; i++) {
             rRec.triEmitterAreaList[i] = 0;
             rRec.triEmitterAreaLumList[i] = 0;
             rRec.triEmitterSurfaceNormalBuffer[i] = Vector(0.0f);
@@ -126,7 +129,7 @@ public:
             rRec.triEmitterVertexBuffer[3 * m_triEmitters + 3 * i + 2] = Vector(0.0f);
         }
 
-        for (int i = 0; i < m_emitterSamples; i++) {
+        for (size_t i = 0; i < m_emitterSamples; i++) {
             rRec.emitterSampleValues[i] = Spectrum(0.0f);
             rRec.emitterSampleDirections[i] = Vector(0.0f);
             rRec.emitterPdf[i] = 0;
@@ -214,8 +217,8 @@ public:
         Spectrum accumulateLtc(0.0f);
         Float terminationProbability = 0.05f;
         Intersection hitLoc;
-        int bounce = 0;
-        size_t nEmitterSamples = m_explicitSamples;
+        size_t bounce = 0;
+        //size_t nEmitterSamples = m_explicitSamples;
 
         while(true) {
             // Do some setup
@@ -254,15 +257,15 @@ public:
 
             DirectSamplingRecord dRec(its);
             
-            //if (m_collectAll || bounce == m_whichBounce)
-                //accumulateLtc += throughputLtc * Analytic::ltcIntegrate(scene, its.p, rotMat, mInv, mInvDet, amplitude, specularReflectance, diffuseReflectance);
+            if (m_collectAll || bounce == m_whichBounce)
+                accumulateLtc += throughputLtc * Analytic::ltcIntegrate(scene, its.p, rotMat, mInv, mInvDet, amplitude, specularReflectance, diffuseReflectance);
 
             // Emitter sampling
 if (m_explicitConnect) {            
             for (size_t i=0; i < m_explicitSamples; ++i) {            
                 const Spectrum valueUnhinderedFirstHit = scene->sampleEmitterDirect(dRec, rRec.nextSample2D(), false);
                 const Emitter *emitter = static_cast<const Emitter *>(dRec.object);
-                if (dRec.pdf >= Epsilon && // emitter is NULL when dRec.pdf is zero. 
+                if (dRec.pdf >= Epsilon && // emitter is NULL when dRec.pdf is zero.
                     emitter->isOnSurface() && // The next three condition essentially checks if the emitter is a mesh light.
                     emitter->getShape() != NULL && 
                     typeid(*(emitter->getShape())) == typeid(TriMesh)) {
@@ -282,8 +285,8 @@ if (m_explicitConnect) {
                     if (scene->rayIntersect(shadowRay, hitLoc) && hitLoc.isEmitter() && hitLoc.shape->getEmitter() == emitter) 
                         notInShadow = 1;
                     
-                    if (bounce == 0)
-                        rRec.notInShadow += notInShadow * (valueUnhinderedAll.getLuminance() > Epsilon ? 1.0f: 0.0f);
+                    //if (bounce == 0)
+                    //    rRec.notInShadow += notInShadow * (valueUnhinderedAll.getLuminance() > Epsilon ? 1.0f: 0.0f);
                                    
                     /* Allocate a record for querying the BSDF */
                     /* Evaluate BSDF * cos(theta) */
@@ -296,7 +299,7 @@ if (m_explicitConnect) {
                     
                     if ( m_collectAll || bounce == m_whichBounce) {
                         accumulate += throughput * valueUnhinderedFirstHit * notInShadow * brdfVal * explicitMisWeight;
-                        //accumulateLtc -= throughputLtc * valueUnhinderedAll * brdfVal * explicitMisWeight;
+                        accumulateLtc -= throughputLtc * valueUnhinderedAll * brdfVal * explicitMisWeight;
                     }
                     /*
                     if (bounce > 0)
@@ -381,7 +384,6 @@ if (m_explicitConnect) {
             bounce++;
        }
      
-
         return accumulate;
     }
 #else
@@ -652,12 +654,11 @@ if (m_explicitConnect) {
             
             if (m_collectAll || bounce == m_whichBounce)
                 accumulateLtc += throughputLtc * ltcEval;
-               
 
             // Emitter sampling
 if (m_explicitConnect) {
             Analytic::getEmitterSamples(m_triEmitters, rRec.triEmitterAreaList, rRec.triEmitterAreaLumList, rRec.areaNormSpecular, rRec.areaNormLumSpecular, rRec.omegaSpecular,
-            rRec.areaNormDiffuse, rRec.areaNormLumDiffuse, rRec.omegaDiffuse, cosThetaIncident, rRec.triEmitterSurfaceNormalBuffer, rRec.triEmitterVertexBuffer, rRec.triEmitterRadianceBuffer, // some buffers to work with
+                rRec.areaNormDiffuse, rRec.areaNormLumDiffuse, rRec.omegaDiffuse, cosThetaIncident, rRec.triEmitterSurfaceNormalBuffer, rRec.triEmitterVertexBuffer, rRec.triEmitterRadianceBuffer, // some buffers to work with
                 m, mInv, mInvDet, amplitude, // domain transformation
                 specularLum, diffuseLum, // material properties for sampling
                 rRec, // sampler
@@ -1166,7 +1167,7 @@ if (m_explicitConnect) {
             bounce++;
        }
        
-       return accumulate;
+       return accumulate + accumulateLtc;
     }
 #else
     Spectrum Li(const RayDifferential &r, RadianceQueryRecord &rRec) const {
