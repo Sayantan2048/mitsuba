@@ -417,7 +417,7 @@ public:
         Float probSpecular = probSpecularLum * probSpecularOmega * (cosThetaIncident > SPECULAR_CONTROL ? 1 : std::pow(cosThetaIncident, 3)); 
         //SLog(EInfo, "%f %f %f", areaNormSpecularNormalized, areaNormDiffuse, mInvDet);
      
-        for (int i = 0; i < nSamples; i++) {
+        for (size_t i = 0; i < nSamples; i++) {
             
             size_t offset = 0;
             Float areaNorm = areaNormDiffuse;
