@@ -17,11 +17,11 @@
 		</integrator>
 	</integrator>
 	-->
-		
-	<!--
-	<integrator type="path">
+
+
+	<integrator type="direct">
 	</integrator>
-	-->
+	
 	
 	<!--
 	<integrator type="pathCv">
@@ -35,17 +35,19 @@
 		</integrator>
 	</integrator>
 	-->
-	
+	<!--
 	<integrator type="pathCv_v2">
 		<boolean name="explicitConnect" value="$expConn"/>
 		<integer name="explicitSamples" value="$expSamp"/>
 	</integrator>
+	-->
 	
 	<!--
 	<integrator type="ltc">
 		<integrator type="analyticDiffuse"/>
 	</integrator>
-	-->	
+	-->
+		
     <shape type="obj">
 		<string name="filename" value="luminaire.obj"/>
 		<transform name="toWorld">

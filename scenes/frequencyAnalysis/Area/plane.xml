@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<scene version="0.6.0">
+	<integrator type="direct"/>
+	
+	<sensor type="perspective">
+		<string name="fovAxis" value="smaller"/>
+		<float name="nearClip" value="0.2"/>
+		<float name="farClip" value="100"/>
+		<float name="focusDistance" value="10"/>
+		<transform name="toWorld">
+			<lookAt origin="-10, 0, 1" target="0, 0, 0" up="0, 0, 1"/>
+		</transform>
+		<float name="fov" value="39.3077"/>
+
+		<sampler type="ldsampler">
+			<integer name="sampleCount" value="256"/>
+		</sampler>
+
+		<film type="hdrfilm">
+			<integer name="width" value="900"/>
+			<integer name="height" value="900"/>
+			<boolean name="banner" value="false"/>
+			<rfilter type="box"/>
+			
+		</film>
+	</sensor>
+		
+	<shape type="rectangle">
+		<bsdf type="diffuse">
+			<texture name="reflectance" type="checkerboard">
+				<float name="uvscale" value="10"/>
+			</texture>
+		</bsdf>
+		<transform name="toWorld">
+			<scale x="10" y="10" z="1"/>
+		</transform>
+	</shape>
+	
+	<shape type="cube">
+		<transform name="toWorld">
+			<scale x="1" y="1" z="1"/>
+			<translate x="0" y="0" z="1.8"/>
+		</transform>
+		<bsdf type="diffuse">
+			<texture type="checkerboard" name="reflectance">
+				<float name="uvscale" value="6"/>
+			</texture>
+		</bsdf>
+	</shape>
+	
+	<shape type="obj">
+		<string name="filename" value="square.obj"/>
+		<transform name="toWorld">
+			<scale x="1000" y="1000" z="1"/>
+			<translate x="0" y="0" z="100"/>
+		</transform>
+		<emitter type="area">
+			<rgb name="radiance" value="0.5 0.5 0.5"/>
+		</emitter>
+		
+		<boolean name="flipNormals" value="true"/>
+		
+		<bsdf type="diffuse">
+			<rgb name="reflectance" value="0 0 0"/>
+		</bsdf>
+	</shape>
+</scene>
